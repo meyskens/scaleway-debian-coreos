@@ -13,14 +13,13 @@ Commands
     # build the image in a rootfs directory
     $ make rootfs
     
-    # build a tarball of the image
-    $ make rootfs.tar
-    
     # push the image on s3
     $ make publish_on_s3.tar
     
     # write the image to /dev/nbd1
     $ make install_on_disk
+    
+Full list of commands available at: https://github.com/online-labs/image-tools/tree/master#commands
 
 Related projects
 ----------------
