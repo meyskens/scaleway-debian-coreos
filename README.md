@@ -3,7 +3,7 @@ Official Docker image on Online Labs
 
 Scripts to build the official Docker image on Online Labs
 
-This image depends on [the official Ubuntu image](https://github.com/online-labs/image-ubuntu).
+This image is built using [Image Tools](https://github.com/online-labs/image-tools) and depends on the official [Ubuntu](https://github.com/online-labs/image-ubuntu) image.
 
 ---
 
