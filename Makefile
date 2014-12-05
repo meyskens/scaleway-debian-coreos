@@ -11,7 +11,7 @@ SOURCE_URL =		https://github.com/online-labs/image-app-docker
 ## Image tools  (https://github.com/online-labs/image-tools)
 all:	docker-rules.mk
 docker-rules.mk:
-	wget -qO - http://j.mp/image-tools-install | bash
+	wget -qO - http://j.mp/image-tools | bash
 -include docker-rules.mk
 
 
