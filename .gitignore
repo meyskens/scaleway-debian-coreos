@@ -1,3 +1,5 @@
+docker-rules.mk
+*.built
 *~
 .*~
 *#
