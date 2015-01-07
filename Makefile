@@ -16,8 +16,8 @@ docker-rules.mk:
 
 
 update_fig:
-       docker run --rm armbuild/docker-fig bash -c 'cat /code/dist/fig-*-py2.7.egg' > sources/fig.egg
+	docker run --rm armbuild/docker-fig bash -c 'cat /code/dist/fig-*-py2.7.egg' > sources/fig.egg
 
 
 update_nsenter:
-       docker run --rm -v $(PWD)/patches/usr/bin:/target armbuild/jpetazzo-nsenter
+	docker run --rm -v $(PWD)/patches/usr/bin:/target armbuild/jpetazzo-nsenter
