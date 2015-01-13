@@ -21,3 +21,7 @@ update_fig:
 
 update_nsenter:
 	docker run --rm -v $(PWD)/patches/usr/bin:/target armbuild/jpetazzo-nsenter
+
+update_swarm:
+	go get -u github.com/docker/swarm
+	cd $(GOPATH)/src/github.com/docker/swarm/ && GOOS=linux GOARCH=arm GOARM=7 go build -a -v -ldflags '-d -w -s' -o $(PWD)/patches/usr/bin/swarm
