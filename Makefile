@@ -1,7 +1,7 @@
 DOCKER_NAMESPACE =	armbuild/
 NAME =			ocs-app-docker
-VERSION =		vivid
-VERSION_ALIASES =	15.04 latest
+VERSION =		latest
+VERSION_ALIASES =	15.04 15 vivid
 TITLE =			Docker 1.3.2
 DESCRIPTION =		Docker 1.3.2 + fig + gosu + nsenter + pipework
 SOURCE_URL =		https://github.com/online-labs/image-app-docker
