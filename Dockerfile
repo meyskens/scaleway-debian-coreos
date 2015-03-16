@@ -1,3 +1,4 @@
+
 ## -*- docker-image-name: "armbuild/ocs-app-docker:vivid" -*-
 FROM armbuild/ocs-distrib-ubuntu:vivid
 MAINTAINER Online Labs <opensource@ocs.online.net> (@online_en)
@@ -35,6 +36,11 @@ RUN wget -qO /usr/local/bin/pipework https://raw.githubusercontent.com/jpetazzo/
 # Install Gosu
 RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/download/1.2/gosu-armhf && \
     chmod +x /usr/local/bin/gosu
+
+
+# Install Docker Compose
+RUN easy_install -U pip \
+ && pip install docker-compose
 
 
 # Patch rootfs
