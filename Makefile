@@ -1,9 +1,9 @@
 DOCKER_NAMESPACE =	armbuild/
 NAME =			ocs-app-docker
 VERSION =		latest
-VERSION_ALIASES =	15.04 15 vivid
-TITLE =			Docker 1.3.2
-DESCRIPTION =		Docker 1.3.2 + fig + gosu + nsenter + pipework
+VERSION_ALIASES =	14.10 14 utopic 1.5.0 1.5
+TITLE =			Docker
+DESCRIPTION =		Docker + fig + gosu + nsenter + pipework
 SOURCE_URL =		https://github.com/online-labs/image-app-docker
 
 

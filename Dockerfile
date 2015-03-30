@@ -1,6 +1,5 @@
-
-## -*- docker-image-name: "armbuild/ocs-app-docker:vivid" -*-
-FROM armbuild/ocs-distrib-ubuntu:vivid
+## -*- docker-image-name: "armbuild/ocs-app-docker:latest" -*-
+FROM armbuild/ocs-distrib-ubuntu:utopic
 MAINTAINER Online Labs <opensource@ocs.online.net> (@online_en)
 
 
@@ -23,11 +22,14 @@ RUN apt-get install $(apt-cache depends docker.io | grep Depends | sed "s/.*ends
 
 
 # Install Docker 1.5
-RUN wget http://ftp.fr.debian.org/debian/pool/main/d/docker.io/docker.io_1.5.0~dfsg1-1_armhf.deb -O /tmp/docker.deb \
- && dpkg -i /tmp/docker.deb \
- && rm -f /tmp/docker.deb
-
-
+RUN wget -q https://get.docker.io/builds/Linux/armel/docker-1.5.0 -O /usr/bin/docker \
+ && wget -q https://raw.githubusercontent.com/docker/docker/v1.5.0/contrib/init/upstart/docker.conf -O /etc/init/docker.conf \
+ && wget -q https://raw.githubusercontent.com/docker/docker/v1.5.0/contrib/init/sysvinit-debian/docker -O /etc/init.d/docker \
+ && chmod +x /usr/bin/docker /etc/init.d/docker \
+ && addgroup docker \
+ && update-rc.d -f docker defaults
+ 
+ 
 # Install Pipework
 RUN wget -qO /usr/local/bin/pipework https://raw.githubusercontent.com/jpetazzo/pipework/master/pipework && \
     chmod +x /usr/local/bin/pipework
