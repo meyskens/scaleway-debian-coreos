@@ -21,7 +21,7 @@ RUN apt-get install $(apt-cache depends docker.io | grep Depends | sed "s/.*ends
 
 
 # Install Docker 1.5
-RUN wget -q https://get.docker.io/builds/Linux/armel/docker-1.5.0 -O /usr/bin/docker \
+RUN wget -q https://raw.githubusercontent.com/umiddelb/armhf/master/bin/docker-1.5.0 -O /usr/bin/docker \
  && wget -q https://raw.githubusercontent.com/docker/docker/v1.5.0/contrib/init/upstart/docker.conf -O /etc/init/docker.conf \
  && wget -q https://raw.githubusercontent.com/docker/docker/v1.5.0/contrib/init/sysvinit-debian/docker -O /etc/init.d/docker \
  && chmod +x /usr/bin/docker /etc/init.d/docker \
