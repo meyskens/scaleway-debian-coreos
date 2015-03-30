@@ -35,7 +35,7 @@ RUN wget -qO /usr/local/bin/pipework https://raw.githubusercontent.com/jpetazzo/
 
 
 # Install Gosu
-RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/download/1.2/gosu-armhf && \
+RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/download/1.3/gosu-armhf && \
     chmod +x /usr/local/bin/gosu
 
 
