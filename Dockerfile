@@ -12,7 +12,6 @@ RUN apt-get -q update &&                   \
     apt-get --force-yes -y -qq upgrade &&  \
     apt-get --force-yes install -y -q      \
         bridge-utils                       \
-        fig                                \
         python-setuptools                  \
     && apt-get clean
 
@@ -40,9 +39,10 @@ RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/downloa
     chmod +x /usr/local/bin/gosu
 
 
-# Install Docker Compose
+# Install Docker Compose and fig
 RUN easy_install -U pip \
- && pip install docker-compose
+ && pip install docker-compose \
+ && pip install fig
 
 
 # Patch rootfs
