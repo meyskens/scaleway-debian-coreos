@@ -16,7 +16,7 @@ DOCKER_OPTS="-H 127.0.0.1:4243 -H unix:///var/run/docker.sock"
 #export TMPDIR="/mnt/bigdrive/docker-tmp"
 
 # small hack: ensure loop module is loaded
-ldmod | grep loop || (
+lsmod | grep loop || (
       sleep 2
       modprobe loop
 )
