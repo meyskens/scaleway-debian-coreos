@@ -3,7 +3,7 @@ NAME =			scw-app-docker
 VERSION =		latest
 VERSION_ALIASES =	14.10 14 utopic 1.5.0 1.5
 TITLE =			Docker
-DESCRIPTION =		Docker + fig + gosu + nsenter + pipework
+DESCRIPTION =		Docker + Docker-Compose + gosu + nsenter + pipework
 SOURCE_URL =		https://github.com/scaleway/image-app-docker
 
 
@@ -13,10 +13,6 @@ docker-rules.mk:
 	wget -qO - http://j.mp/scw-image-tools | bash
 -include docker-rules.mk
 ## Here you can add custom commands and overrides
-
-
-update_fig:
-	docker run --rm armbuild/docker-fig bash -c 'cat /code/dist/fig-*-py2.7.egg' > sources/fig.egg
 
 
 update_nsenter:
