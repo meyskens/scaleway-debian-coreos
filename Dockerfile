@@ -1,6 +1,6 @@
-## -*- docker-image-name: "armbuild/ocs-app-docker:latest" -*-
-FROM armbuild/ocs-distrib-ubuntu:utopic
-MAINTAINER Online Labs <opensource@ocs.online.net> (@online_en)
+## -*- docker-image-name: "armbuild/scw-app-docker:latest" -*-
+FROM armbuild/scw-distrib-ubuntu:utopic
+MAINTAINER Scaleway <opensource@scaleway.com> (@scaleway)
 
 
 # Prepare rootfs for image-builder
@@ -8,12 +8,12 @@ RUN /usr/local/sbin/builder-enter
 
 
 # Install packages
-RUN apt-get -q update &&                   \
-    apt-get --force-yes -y -qq upgrade &&  \
-    apt-get --force-yes install -y -q      \
-        bridge-utils                       \
-        python-setuptools                  \
-    && apt-get clean
+RUN apt-get -q update                   \
+ && apt-get --force-yes -y -qq upgrade  \
+ && apt-get --force-yes install -y -q   \
+        bridge-utils                    \
+        python-setuptools               \
+ && apt-get clean
 
 
 # Install Docker dependencies
@@ -39,10 +39,10 @@ RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/downloa
     chmod +x /usr/local/bin/gosu
 
 
-# Install Docker Compose and fig
+# Install Docker Compose
 RUN easy_install -U pip \
  && pip install docker-compose \
- && pip install fig
+ && ln -s /usr/local/bin/docker-compose /usr/local/bin/fig
 
 
 # Patch rootfs
