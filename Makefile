@@ -1,16 +1,16 @@
 DOCKER_NAMESPACE =	armbuild/
-NAME =			ocs-app-docker
+NAME =			scw-app-docker
 VERSION =		latest
 VERSION_ALIASES =	14.10 14 utopic 1.5.0 1.5
 TITLE =			Docker
 DESCRIPTION =		Docker + fig + gosu + nsenter + pipework
-SOURCE_URL =		https://github.com/online-labs/image-app-docker
+SOURCE_URL =		https://github.com/scaleway/image-app-docker
 
 
-## Image tools  (https://github.com/online-labs/image-tools)
+## Image tools  (https://github.com/scaleway/image-tools)
 all:	docker-rules.mk
 docker-rules.mk:
-	wget -qO - http://j.mp/image-tools | bash
+	wget -qO - http://j.mp/scw-image-tools | bash
 -include docker-rules.mk
 ## Here you can add custom commands and overrides
 
