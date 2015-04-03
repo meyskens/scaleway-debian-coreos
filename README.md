@@ -1,4 +1,4 @@
-Docker image on Scaleway
+Docker image on Scaleway [![Build Status](https://travis-ci.org/scaleway/image-app-docker.svg?branch=master)](https://travis-ci.org/scaleway/image-app-docker)
 ========================
 
 [![Run on Scaleway](http://scaleway.github.io/image-tools/assets/run.svg)](https://cloud.scaleway.com/#/servers/new?image=47820ea9-700f-40f8-8a28-d318a0fb7562)
