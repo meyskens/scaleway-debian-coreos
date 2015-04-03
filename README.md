@@ -1,6 +1,9 @@
 Docker image on Scaleway
 ========================
 
+[![Run on Scaleway](http://scaleway.github.io/image-tools/assets/run.svg)](https://cloud.scaleway.com/#/servers/new?image=47820ea9-700f-40f8-8a28-d318a0fb7562)
+
+
 Scripts to build the official Docker image on Scaleway
 
 This image is built using [Image Tools](https://github.com/scaleway/image-tools) and depends on the official [Ubuntu](https://github.com/scaleway/image-ubuntu) image.
