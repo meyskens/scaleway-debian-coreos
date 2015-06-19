@@ -20,13 +20,15 @@ RUN apt-get -q update                   \
 RUN apt-get install $(apt-cache depends docker.io | grep Depends | sed "s/.*ends:\ //" | tr '\n' ' ')
 
 
-# Install Docker 1.5
-RUN wget -q https://raw.githubusercontent.com/umiddelb/armhf/master/bin/docker-1.5.0 -O /usr/bin/docker \
- && wget -q https://raw.githubusercontent.com/docker/docker/v1.5.0/contrib/init/upstart/docker.conf -O /etc/init/docker.conf \
- && wget -q https://raw.githubusercontent.com/docker/docker/v1.5.0/contrib/init/sysvinit-debian/docker -O /etc/init.d/docker \
+# Install Docker
+ENV DOCKER_VERSION 1.6.0
+RUN wget -q http://armbuild.fr-1.storage.online.net/docker-${DOCKER_VERSION} -O /usr/bin/docker \
+ && wget -q https://raw.githubusercontent.com/docker/docker/${DOCKER_VERSION}/contrib/init/upstart/docker.conf -O /etc/init/docker.conf \
+ && wget -q https://github.com/docker/docker/blob/${DOCKER_VERSION}/contrib/init/systemd/docker.service -O /etc/systemd/system/docker.service \
+ && wget -q https://github.com/docker/docker/blob/${DOCKER_VERSION}/contrib/init/systemd/docker.socket -O /etc/systemd/system/docker.socket \
  && chmod +x /usr/bin/docker /etc/init.d/docker \
  && addgroup docker \
- && update-rc.d -f docker defaults
+ && systemctl enable docker
  
  
 # Install Pipework
