@@ -21,7 +21,7 @@ RUN apt-get install $(apt-cache depends docker.io | grep Depends | sed "s/.*ends
 
 
 # Install Docker
-ENV DOCKER_VERSION 1.6.0
+ENV DOCKER_VERSION 1.7.0
 RUN wget -q http://armbuild.fr-1.storage.online.net/docker-${DOCKER_VERSION} -O /usr/bin/docker \
  && wget -q https://raw.githubusercontent.com/docker/docker/${DOCKER_VERSION}/contrib/init/upstart/docker.conf -O /etc/init/docker.conf \
  && wget -q https://github.com/docker/docker/blob/${DOCKER_VERSION}/contrib/init/systemd/docker.service -O /etc/systemd/system/docker.service \
