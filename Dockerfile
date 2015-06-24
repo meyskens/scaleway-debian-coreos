@@ -11,9 +11,17 @@ RUN /usr/local/sbin/builder-enter
 RUN apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
  && apt-get --force-yes install -y -q   \
-        bridge-utils                    \
+	apparmor			\
+	aufs-tools			\
+	btrfs-tools			\
+	bridge-utils                    \
+	cgroup-lite			\
+	git				\
+	ifupdown			\
 	kmod				\
-        python-setuptools               \
+	lxc				\
+	python-setuptools               \
+	vlan				\
  && apt-get clean
 
 
