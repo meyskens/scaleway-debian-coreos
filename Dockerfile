@@ -30,13 +30,11 @@ RUN apt-get install $(apt-cache depends docker.io | grep Depends | sed "s/.*ends
 
 
 # Install Docker
-ENV DOCKER_VERSION 1.6.2
-RUN wget -q http://armbuild.fr-1.storage.online.net/docker-${DOCKER_VERSION} -O /usr/bin/docker \
- && wget -q https://raw.githubusercontent.com/docker/docker/v${DOCKER_VERSION}/contrib/init/systemd/docker.service -O /etc/systemd/system/docker.service \
- && wget -q https://raw.githubusercontent.com/docker/docker/v${DOCKER_VERSION}/contrib/init/systemd/docker.socket -O /etc/systemd/system/docker.socket \
- && wget -q https://raw.githubusercontent.com/docker/docker/v1.7.0/contrib/completion/bash/docker -O /etc/bash_completion.d/docker \
- && chmod +x /usr/bin/docker \
- && addgroup docker \
+ENV DOCKER_VERSION 1.7.0
+ENV DOCKER_FIX -2
+RUN wget -q http://armbuild.fr-1.storage.online.net/docker-hypriot_${DOCKER_VERSION}${DOCKER_FIX}_armhf.deb -O /tmp/docker.deb \
+ && dpkg -i /tmp/docker.deb \
+ && rm -f /tmp/docker.deb \
  && systemctl enable docker
  
  

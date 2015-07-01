@@ -1,7 +1,7 @@
 DOCKER_NAMESPACE =	armbuild/
 NAME =			scw-app-docker
 VERSION =		latest
-VERSION_ALIASES =	1.6.2 1.6 1
+VERSION_ALIASES =	1.7.0 1.7 1
 TITLE =			Docker
 DESCRIPTION =		Docker + Docker-Compose + gosu + nsenter + pipework
 SOURCE_URL =		https://github.com/scaleway/image-app-docker
