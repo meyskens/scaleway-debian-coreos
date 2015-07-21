@@ -30,10 +30,10 @@ RUN apt-get install $(apt-cache depends docker.io | grep Depends | sed "s/.*ends
 
 
 # Install Docker
-ENV DOCKER_VERSION 1.7.0
-ENV DOCKER_FIX -2
+ENV DOCKER_VERSION 1.7.1
+ENV DOCKER_FIX -1
 # docker-hypriot_XXX_armhf.deb built using https://github.com/hypriot/rpi-docker-builder
-RUN wget -q http://armbuild.fr-1.storage.online.net/docker-hypriot_${DOCKER_VERSION}${DOCKER_FIX}_armhf.deb -O /tmp/docker.deb \
+RUN wget -q http://downloads.hypriot.com/docker-hypriot_${DOCKER_VERSION}${DOCKER_FIX}_armhf.deb -O /tmp/docker.deb \
  && dpkg -i /tmp/docker.deb \
  && rm -f /tmp/docker.deb \
  && systemctl enable docker
