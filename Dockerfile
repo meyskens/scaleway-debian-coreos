@@ -45,7 +45,8 @@ RUN wget -qO /usr/local/bin/pipework https://raw.githubusercontent.com/jpetazzo/
 
 
 # Install Gosu
-RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/download/1.3/gosu-armhf && \
+ENV GOSU_VERSION 1.3
+RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-armhf && \
     chmod +x /usr/local/bin/gosu
 
 
@@ -53,6 +54,12 @@ RUN wget -qO /usr/local/bin/gosu https://github.com/tianon/gosu/releases/downloa
 RUN easy_install -U pip \
  && pip install docker-compose \
  && ln -s /usr/local/bin/docker-compose /usr/local/bin/fig
+
+
+# Install Docker Machine
+ENV DOCKER_MACHINE_VERSION 0.3.1
+RUN wget -qO /usr/local/bin/docker-machine https://github.com/docker/machine/releases/download/v${DOCKER_MACHINE_VERSION}/docker-machine_linux-arm \
+ && chmod +x /usr/local/bin/docker-machine
 
 
 # Patch rootfs
