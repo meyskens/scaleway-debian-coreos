@@ -59,6 +59,7 @@ RUN easy_install -U pip \
 ADD ./patches/etc/ /etc/
 ADD ./patches/usr/bin/ /usr/bin/
 ADD ./patches/usr/local/ /usr/local/
+RUN systemctl disable docker; systemctl enable docker
 
 
 # Clean rootfs from image-builder
