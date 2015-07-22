@@ -5,9 +5,12 @@ PATH=/bin:/usr/bin:/usr/local/bin
 DOCKER_VERSION=$(docker version)
 DOCKER_INFO=$(docker info)
 
+STORAGE_DRIVER=$(echo "$DOCKER_INFO" | grep Storage\ Driver | awk '{print $NF}')
+VERSION=$(echo "$DOCKER_VERSION" | grep Client\ version | awk '{print $NF}')
+
 cat <<EOF
 
-Docker $(echo "$DOCKER_VERSION" | grep Client\ version | awk '{print $NF}') is running using the $(echo "$DOCKER_INFO" | grep Storage\ Driver | awk '{print $NF}') storage driver.
-Installed tools: fig, nsenter, gosu and pipework are installed.
+Docker $VERSION is running using the '$STORAGE_DRIVER' storage driver.
+Installed tools: docker-compose, nsenter, gosu and pipework are installed.
 Getting started with Docker on C1: https://community.cloud.online.net/t/383?u=manfred.
 EOF
