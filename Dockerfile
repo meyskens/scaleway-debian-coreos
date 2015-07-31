@@ -12,6 +12,7 @@ RUN apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
  && apt-get --force-yes install -y -q   \
 	apparmor			\
+	arping				\
 	aufs-tools			\
 	btrfs-tools			\
 	bridge-utils                    \
