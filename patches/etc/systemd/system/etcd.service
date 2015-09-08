@@ -1,0 +1,17 @@
+[Unit]
+Description=etcd
+Wants=network.target network-online.target
+After=scw-int.service network.target network-online.target 
+
+[Service]
+Environment=ETCD_DATA_DIR=/var/lib/etcd
+Environment=ETCD_NAME=$HOST
+Environment="ETCD_ADDR=$ADDR
+Environment="ETCD_DISCOVERY=$DISCOVER"
+Environment="ETCD_PEER_ADDR=$PEERADDR"
+ExecStart = /usr/bin/etcd
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

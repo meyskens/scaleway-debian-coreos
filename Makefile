@@ -1,10 +1,10 @@
-DOCKER_NAMESPACE =	armbuild/
-NAME =			scw-app-docker
+DOCKER_NAMESPACE =	meyskens/
+NAME =			scw-app-ubuntu-coreos
 VERSION =		latest
-VERSION_ALIASES =	1.8.1 1.8 1
-TITLE =			Docker
-DESCRIPTION =		Docker + Docker-Compose + gosu + nsenter + pipework
-SOURCE_URL =		https://github.com/scaleway/image-app-docker
+VERSION_ALIASES =	1.0
+TITLE =			CoreOS-like ARM Ubuntu image
+DESCRIPTION =		Docker + Fleet + Etcd
+SOURCE_URL =		https://github.com/meyskens/scw-app-ubuntu-coreos
 
 
 ## Image tools  (https://github.com/scaleway/image-tools)

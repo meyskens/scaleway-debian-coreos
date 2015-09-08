@@ -1,10 +1,8 @@
-Docker image on Scaleway [![Build Status](https://travis-ci.org/scaleway/image-app-docker.svg?branch=master)](https://travis-ci.org/scaleway/image-app-docker)
+Ubuntu-with-CoreOS-tools image for Scaleway
 ========================
 
-[![Run on Scaleway](http://scaleway.github.io/image-tools/assets/run.svg)](https://cloud.scaleway.com/#/servers/new?image=47820ea9-700f-40f8-8a28-d318a0fb7562)
 
-
-Scripts to build the official Docker image on Scaleway
+Scripts to build a Ubuntu image on Scaleway with the common used tools of CoreOS like fleet, etcd and flanneld (soon more to be added).
 
 This image is built using [Image Tools](https://github.com/scaleway/image-tools) and depends on the official [Ubuntu](https://github.com/scaleway/image-ubuntu) image.
 
@@ -12,7 +10,7 @@ This image is built using [Image Tools](https://github.com/scaleway/image-tools)
 
 **This image is meant to be used on a C1 server.**
 
-We use the Docker's building system and convert it at the end to a disk image that will boot on real servers without Docker. Note that the image is still runnable as a Docker container for debug or for inheritance.
+We use the Docker's building system and convert it at the end to a disk image that will boot on real servers without Docker. Note that the image is still runnable as a Docker container for debug or for inheritance, but really running Docker inside Docker?.
 
 [More info](https://github.com/scaleway/image-tools#docker-based-builder)
 
@@ -29,6 +27,19 @@ Full list of commands available at: [scaleway/image-tools](https://github.com/sc
 
 ---
 
+How to use
+----------
+
+To set up a cluster you need at least 3 nodes, this is required for etcd to work. Setting up these nodes is quite simple.
+
+1. Go create a new server and select this image.
+2. If you start a new cluster you need an etcd discovery link as start point. You can get one at https://discovery.etcd.io/new
+3. Add your discover link as a tag to your server in format `discover:https://discovery.etcd.io/secretkeyyougot`. Make sure it is the first tag!
+4. Repeat this at least 2 more times.
+5. Enjoy! You can just login as root and use fleet to manage your unit files.
+
+---
+
 Links
 -----
 
@@ -38,4 +49,13 @@ Links
 
 ---
 
-A project by [![Scaleway](https://avatars1.githubusercontent.com/u/5185491?v=3&s=42)](https://www.scaleway.com/)
+
+Q&A
+---
+
+**Why not Gentoo?** *The main reason is that I don't have much experience with Gentoo to make a propper working image in a short time.*
+**Why not port the CoreOS source?** *CoreOS doesn't seem to show interest in other architectures. Some dependencies even give a warning on compile time. Another argument is that their update system also manages the kernel and Scaleway does not support using your own kernel.*
+
+---
+
+A project by [Innovate Technologies](https://github.com/Innovate-Technologies/)

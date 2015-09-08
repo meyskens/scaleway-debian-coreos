@@ -10,7 +10,8 @@ VERSION=$(echo "$DOCKER_VERSION" | grep Client\ version | awk '{print $NF}')
 
 cat <<EOF
 
+Ubuntu with etcd, fleet, cloudinit and Docker
+
 Docker $VERSION is running using the '$STORAGE_DRIVER' storage driver.
-Installed tools: docker-compose, nsenter, gosu and pipework are installed.
-Getting started with Docker on C1: https://community.cloud.online.net/t/383?u=manfred.
+Info about Docker on the C1: https://community.cloud.online.net/t/383?u=manfred.
 EOF
