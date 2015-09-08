@@ -54,6 +54,7 @@ Q&A
 ---
 
 **Why not Gentoo?** *The main reason is that I don't have much experience with Gentoo to make a propper working image in a short time.*
+
 **Why not port the CoreOS source?** *CoreOS doesn't seem to show interest in other architectures. Some dependencies even give a warning on compile time. Another argument is that their update system also manages the kernel and Scaleway does not support using your own kernel.*
 
 ---
