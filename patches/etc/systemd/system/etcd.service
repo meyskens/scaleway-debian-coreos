@@ -9,6 +9,7 @@ Environment=ETCD_NAME=$HOST
 Environment="ETCD_ADDR=$ADDR
 Environment="ETCD_DISCOVERY=$DISCOVER"
 Environment="ETCD_PEER_ADDR=$PEERADDR"
+Environment="ETCD_LISTEN_PEER_URLS=$LISTENPEER"
 ExecStart = /usr/bin/etcd
 Restart=always
 RestartSec=10s

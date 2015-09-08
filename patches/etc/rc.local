@@ -23,6 +23,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     sed -i 's/$ADDR/'$SCWIP':4001/g' /etc/systemd/system/etcd.service
     sed -i 's/$DISCOVER/'${DISCOVER//\//\\/}'/g' /etc/systemd/system/etcd.service
     sed -i 's/$PEERADDR/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
+    sed -i 's/$LISTENPEER/http://'$SCWIP':7001/g' /etc/systemd/system/etcd.service
     sed -i 's/$PUBLICIP/'$SCWPUBLIC'/g' /etc/systemd/system/fleet.service
     touch /etc/scw-int-done-setup
     systemctl enable etcd && systemctl enable fleet && systemctl enable flanneld
