@@ -95,3 +95,12 @@ RUN cd /usr/src && \
     git clone https://github.com/coreos/flannel.git && \
     cd flannel && ./build && \
     ln -s /usr/src/flannel/bin/* /usr/bin/
+    
+# Installing UFW
+RUN apt-get -y install ufw && \
+    sed -i "s/IPV6=yes/IPV6=no/g" /etc/default/ufw && \
+    ufw default allow incoming
+    
+# Installing update-firewall
+RUN cd /usr/local/update-firewall && \
+    GOPATH=/usr/src/spouse GOBIN=$GOPATH/bin go get

@@ -35,8 +35,9 @@ To set up a cluster you need at least 3 nodes, this is required for etcd to work
 1. Go create a new server and select this image.
 2. If you start a new cluster you need an etcd discovery link as start point. You can get one at https://discovery.etcd.io/new
 3. Add your discover link as a tag to your server in format `discover:https://discovery.etcd.io/secretkeyyougot`. Make sure it is the first tag!
-4. Repeat this at least 2 more times.
-5. Enjoy! You can just login as root and use fleet to manage your unit files.
+4. Set a second tag with your Scaleway access key and token in format `api:accesskey:token`. 
+5. Repeat this at least 2 more times.
+6. Enjoy! You can just login as root and use fleet to manage your unit files.
 
 ---
 
@@ -57,6 +58,7 @@ Q&A
 
 **Why not port the CoreOS source?** *CoreOS doesn't seem to show interest in other architectures. Some dependencies even give a warning on compile time. Another argument is that their update system also manages the kernel and Scaleway does not support using your own kernel.*
 
+**Why do you want my API keys?** *We use this to discover other nodes on your account and giving only those IPs access to sensitive ports as etcd.*
 ---
 
 A project by [Innovate Technologies](https://github.com/Innovate-Technologies/)
