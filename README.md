@@ -59,6 +59,7 @@ Q&A
 **Why not port the CoreOS source?** *CoreOS doesn't seem to show interest in other architectures. Some dependencies even give a warning on compile time. Another argument is that their update system also manages the kernel and Scaleway does not support using your own kernel.*
 
 **Why do you want my API keys?** *We use this to discover other nodes on your account and giving only those IPs access to sensitive ports as etcd.*
+
 ---
 
 A project by [Innovate Technologies](https://github.com/Innovate-Technologies/)
