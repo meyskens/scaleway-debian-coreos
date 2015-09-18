@@ -25,10 +25,10 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     echo "private_ipv4="$SCWIP >>/etc/environment
     echo "public_ipv4="$SCWPUBLIC >>/etc/environment
     sed -i 's/$HOST/'$HOST'/g' /etc/systemd/system/etcd.service
-    sed -i 's/$ADDR/'$SCWIP':4001/g' /etc/systemd/system/etcd.service
     sed -i 's/$DISCOVER/'${DISCOVER//\//\\/}'/g' /etc/systemd/system/etcd.service
     sed -i 's/$PEERADDR/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
     sed -i 's/$LISTENPEER/http:\/\/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
+    sed -i 's/$ADVURL/http:\/\/'$SCWIP':4001,http:\/\/'$SCWIP':2379/g' /etc/systemd/system/etcd.service
     sed -i 's/$PUBLICIP/'$SCWPUBLIC'/g' /etc/systemd/system/fleet.service
     sed -i 's/$KEY/'$APIKEY'/g' /etc/systemd/system/update-firewall.service
     sed -i 's/$TAG/discover:'${DISCOVER//\//\\/}'/g' /etc/systemd/system/update-firewall.service

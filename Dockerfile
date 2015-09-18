@@ -78,16 +78,10 @@ RUN cd /usr/src/ && \
     ln -s /usr/src/fleet/bin/* /usr/bin/
  
 # Install Etcd    
-RUN curl -sSL -k https://github.com/coreos/etcd/archive/v2.0.4.tar.gz | tar --touch -v -C /usr/src -xz && \
-    cd /usr/src/etcd-2.0.4 && \
-    curl https://raw.githubusercontent.com/mkaczanowski/docker-archlinux-arm/master/archlinux-etcd/patches/raft.go.patch > raft.go.patch && \
-    curl https://raw.githubusercontent.com/mkaczanowski/docker-archlinux-arm/master/archlinux-etcd/patches/server.go.patch > server.go.patch && \
-    curl https://raw.githubusercontent.com/mkaczanowski/docker-archlinux-arm/master/archlinux-etcd/patches/watcher_hub.go.patch > watcher_hub.go.patch && \
-    patch etcdserver/raft.go < raft.go.patch && \
-    patch etcdserver/server.go < server.go.patch && \
-    patch store/watcher_hub.go < watcher_hub.go.patch && \
+RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.2 && \
+    cd /usr/src/etcd && \
     ./build && \
-    ln -s /usr/src/etcd-2.0.4/bin/* /usr/bin/ && \
+    ln -s /usr/src/etcd/bin/* /usr/bin/ && \
     mkdir /var/lib/etcd 
 
 # Install flannel
