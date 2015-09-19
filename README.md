@@ -3,7 +3,7 @@
 
 Scripts to build a Ubuntu image on Scaleway with the common used tools of CoreOS like fleet, etcd and flanneld (soon more to be added).
 
-This image is built using [Image Tools](https://github.com/scaleway/image-tools) and depends on the official [Ubuntu](https://github.com/scaleway/image-ubuntu) image.
+This image is built using [Image Tools](https://github.com/scaleway/image-tools) and depends on the official [Docker](https://github.com/scaleway/image-docker) image.
 
 ---
 
