@@ -60,6 +60,8 @@ Q&A
 
 **Why do you want my API keys?** *We use this to discover other nodes on your account and giving only those IPs access to sensitive ports as etcd.*
 
+**Why do I need 3 servers?** *Becuase everything (including Docker) is dependend on etcd. Etcd needs at least 3 nodes by default. You can work this arround but if you need less than 3 you should reconsider if you need this.*
+
 ---
 
 A project by [Innovate Technologies](https://github.com/Innovate-Technologies/)
