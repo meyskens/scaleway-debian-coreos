@@ -1,5 +1,4 @@
-Ubuntu-with-CoreOS-tools image for Scaleway
-========================
+# Ubuntu-with-CoreOS-tools image for Scaleway
 
 
 Scripts to build a Ubuntu image on Scaleway with the common used tools of CoreOS like fleet, etcd and flanneld (soon more to be added).
@@ -16,19 +15,19 @@ We use the Docker's building system and convert it at the end to a disk image th
 
 ---
 
-Install
--------
+## Install
 
 Build and write the image to /dev/nbd1 (see [documentation](https://www.scaleway.com/docs/create_an_image_with_docker))
 
-    $ make install
+```console
+$ make install
+```
 
 Full list of commands available at: [scaleway/image-tools](https://github.com/scaleway/image-tools/tree/master/scripts#commands)
 
 ---
 
-How to use
-----------
+## How to use
 
 To set up a cluster you need at least 3 nodes, this is required for etcd to work. Setting up these nodes is quite simple.
 
@@ -41,8 +40,7 @@ To set up a cluster you need at least 3 nodes, this is required for etcd to work
 
 ---
 
-Links
------
+## Links
 
 - [Community: Docker Support](https://community.cloud.online.net/t/official-docker-support/374?u=manfred)
 - [Community: Getting started with Docker on C1 (armhf)](https://community.cloud.online.net/t/getting-started-docker-on-c1-armhf/383?u=manfred)
@@ -51,8 +49,7 @@ Links
 ---
 
 
-Q&A
----
+## Q&A
 
 **Why not Gentoo?** *The main reason is that I don't have much experience with Gentoo to make a propper working image in a short time.*
 

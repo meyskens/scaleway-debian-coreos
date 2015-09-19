@@ -1,5 +1,5 @@
-## -*- docker-image-name: "armbuild/scw-app-docker:latest" -*-
-FROM armbuild/scw-distrib-ubuntu:vivid
+## -*- docker-image-name: "scaleway/ubuntu-coreos:latest" -*-
+FROM scaleway/ubuntu:vivid
 MAINTAINER Maarten Eyskens <maarten@innovatete.ch> (@meyskens)
 
 
