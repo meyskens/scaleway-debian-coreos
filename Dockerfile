@@ -49,8 +49,13 @@ RUN apt-get -y install ufw && \
     ufw default allow incoming
     
 # Installing update-firewall
+ADD ./patches/usr/local/ /usr/local/
 RUN cd /usr/local/update-firewall && \
     GOPATH=/usr/src/spouse GOBIN=$GOPATH/bin go get
+
+# Patch rootfs
+ADD ./patches/etc/ /etc/
+RUN systemctl disable docker; systemctl enable docker
 
 
 # Clean rootfs from image-builder
