@@ -26,8 +26,8 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     sed -i 's/$HOST/'$SCWPUBLIC'/g' /etc/systemd/system/etcd.service
     sed -i 's/$DISCOVER/'${DISCOVER//\//\\/}'/g' /etc/systemd/system/etcd.service
     sed -i 's/$PEERADDR/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
-    sed -i 's/$LISTENPEER/http:\/\/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
-    sed -i 's/$ADVURL/http:\/\/'$SCWIP':4001,http:\/\/'$SCWIP':2379/g' /etc/systemd/system/etcd.service
+    sed -i 's/$LISTENPEER/http:\/\/'$SCWPUBLIC':7001/g' /etc/systemd/system/etcd.service
+    sed -i 's/$ADVURL/http:\/\/'$SCWPUBLIC':4001,http:\/\/'$SCWPUBLIC':2379/g' /etc/systemd/system/etcd.service
     sed -i 's/$PUBLICIP/'$SCWPUBLIC'/g' /etc/systemd/system/fleet.service
     sed -i 's/$KEY/'$APIKEY'/g' /etc/systemd/system/update-firewall.service
     sed -i 's/$TAG/discover:'${DISCOVER//\//\\/}'/g' /etc/systemd/system/update-firewall.service
