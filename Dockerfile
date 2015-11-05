@@ -1,5 +1,5 @@
 ## -*- docker-image-name: "scaleway/ubuntu-coreos:latest" -*-
-FROM scaleway/docker:1.8.2
+FROM scaleway/docker:1.9.0
 MAINTAINER Maarten Eyskens <maarten@innovatete.ch> (@meyskens)
 
 
