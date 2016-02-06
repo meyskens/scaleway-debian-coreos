@@ -1,5 +1,11 @@
 ## -*- docker-image-name: "scaleway/ubuntu-coreos:latest" -*-
-FROM scaleway/docker:1.10
+FROM scaleway/docker:armhf-1.10
+# following 'FROM' lines are used dynamically thanks do the image-builder
+# which dynamically update the Dockerfile if needed.
+#FROM scaleway/ubuntu:armhf-1.10	# arch=armv7l
+#FROM scaleway/ubuntu:arm64-1.10	# arch=arm64
+#FROM scaleway/ubuntu:i386-1.10		# arch=i386
+#FROM scaleway/ubuntu:mips-1.10		# arch=mips
 MAINTAINER Maarten Eyskens <maarten@innovatete.ch> (@meyskens)
 
 
