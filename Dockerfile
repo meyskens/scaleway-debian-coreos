@@ -1,5 +1,5 @@
 ## -*- docker-image-name: "scaleway/ubuntu-coreos:latest" -*-
-FROM scaleway/docker:1.8.2
+FROM scaleway/docker:1.9
 MAINTAINER Maarten Eyskens <maarten@innovatete.ch> (@meyskens)
 
 
@@ -10,23 +10,19 @@ RUN /usr/local/sbin/builder-enter
 # Install packages
 RUN apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
- && apt-get --force-yes install -y -q build-essential \
+ && apt-get --force-yes install -y -q build-essential tar \
  && apt-get clean
 
 
 # Install Go
-RUN cd /usr/src/ && \
-    git clone https://go.googlesource.com/go && \
-    cd go && git checkout go1.4.2 && \
-    cd src && ./make.bash && \
-    ln -s /usr/src/go/bin/* /usr/bin/  && \
+RUN apt-get -y install golang  && \
     echo "export GOPATH=/usr/src/spouse" >> ~/.bashrc && \
     mkdir /usr/src/spouse
     
 # Install Fleet
 RUN cd /usr/src/ && \
     GOPATH=/usr/src/spouse go get golang.org/x/tools/cmd/cover && \
-    git clone https://github.com/coreos/fleet.git && cd fleet && \
+    wget https://github.com/coreos/fleet/archive/v0.11.5.tar.gz && tar xzf v0.11.5.tar.gz && mv fleet-0.11.5 fleet && cd fleet && \
     ./build && \
     ln -s /usr/src/fleet/bin/* /usr/bin/
  
