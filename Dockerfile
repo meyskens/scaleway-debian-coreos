@@ -6,7 +6,7 @@ FROM scaleway/docker:armhf-1.10
 #FROM scaleway/ubuntu:arm64-1.10	# arch=arm64
 #FROM scaleway/ubuntu:i386-1.10		# arch=i386
 #FROM scaleway/ubuntu:mips-1.10		# arch=mips
-MAINTAINER Maarten Eyskens <maarten@innovatete.ch> (@meyskens)
+MAINTAINER Maartje Eyskens <maartje@innovatete.ch> (@meyskens)
 
 
 # Prepare rootfs for image-builder
@@ -24,32 +24,32 @@ RUN apt-get -q update                   \
 RUN apt-get -y install golang  && \
     echo "export GOPATH=/usr/src/spouse" >> ~/.bashrc && \
     mkdir /usr/src/spouse
-    
+
 # Install Fleet
 RUN cd /usr/src/ && \
     GOPATH=/usr/src/spouse go get golang.org/x/tools/cmd/cover && \
     wget https://github.com/coreos/fleet/archive/v0.11.5.tar.gz && tar xzf v0.11.5.tar.gz && mv fleet-0.11.5 fleet && cd fleet && \
     ./build && \
     ln -s /usr/src/fleet/bin/* /usr/bin/
- 
-# Install Etcd    
+
+# Install Etcd
 RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.2 && \
     cd /usr/src/etcd && \
     ./build && \
     ln -s /usr/src/etcd/bin/* /usr/bin/ && \
-    mkdir /var/lib/etcd 
+    mkdir /var/lib/etcd
 
 # Install flannel
 RUN cd /usr/src && \
     git clone https://github.com/coreos/flannel.git && \
     cd flannel && ./build && \
     ln -s /usr/src/flannel/bin/* /usr/bin/
-    
+
 # Installing UFW
 RUN apt-get -y install ufw && \
     sed -i "s/IPV6=yes/IPV6=no/g" /etc/default/ufw && \
     ufw default allow incoming
-    
+
 # Installing update-firewall
 ADD ./patches/usr/local/ /usr/local/
 RUN cd /usr/local/update-firewall && \
