@@ -34,9 +34,18 @@ To set up a cluster you need at least 3 nodes, this is required for etcd to work
 1. Go create a new server and select this image.
 2. If you start a new cluster you need an etcd discovery link as start point. You can get one at https://discovery.etcd.io/new
 3. Add your discover link as a tag to your server in format `discover:https://discovery.etcd.io/secretkeyyougot`. Make sure it is the first tag!
-4. Set a second tag with your Scaleway access key and token in format `api:accesskey:token`. 
+4. Set a second tag with your Scaleway access key and token in format `api:accesskey:token`.
 5. Repeat this at least 2 more times.
 6. Enjoy! You can just login as root and use fleet to manage your unit files.
+
+
+---
+
+## How to use DNS discovery
+
+Using DNS to bootstrap the cluster can have a few advantages like making it more scalable.
+
+To do this use the [official documentation on how to set up the DNS records](https://coreos.com/etcd/docs/latest/clustering.html#dns-discovery) and use `discover:example.com`, for the servers not listed in the records add `proxy:true` as third tag.
 
 ---
 
