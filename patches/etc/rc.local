@@ -22,7 +22,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     sleep 1 # the conf server needs rest before it will reply again
     APIKEY=$(curl http://169.254.42.42/conf | egrep TAGS_1= | sed 's/TAGS_1=api://g')
     sleep 1 # the conf server needs rest before it will reply again
-    PROXY=$(curl http://169.254.42.42/conf | egrep TAGS_1= | sed 's/TAGS_2=proxy://g')
+    PROXY=$(curl http://169.254.42.42/conf | egrep TAGS_2= | sed 's/TAGS_2=proxy://g')
     echo "private_ipv4="$SCWIP >>/etc/environment
     echo "public_ipv4="$SCWPUBLIC >>/etc/environment
     sed -i 's/$HOST/'$SCWPUBLIC'/g' /etc/systemd/system/etcd.service
