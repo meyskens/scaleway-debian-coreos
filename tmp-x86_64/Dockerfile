@@ -1,11 +1,8 @@
 ## -*- docker-image-name: "scaleway/ubuntu-coreos:latest" -*-
-FROM scaleway/docker:amd64-1.10
+FROM scaleway/docker:armhf-1.10
 # following 'FROM' lines are used dynamically thanks do the image-builder
 # which dynamically update the Dockerfile if needed.
-#FROM scaleway/docker:armhf-1.10	# arch=armv7l
-#FROM scaleway/docker:arm64-1.10	# arch=arm64
-#FROM scaleway/docker:i386-1.10		# arch=i386
-#FROM scaleway/docker:mips-1.10		# arch=mips
+#FROM scaleway/ubuntu:armhf-1.10	# arch=armv7l
 MAINTAINER Maartje Eyskens <maartje@innovatete.ch> (@meyskens)
 
 
@@ -51,12 +48,12 @@ RUN apt-get -y install ufw && \
     ufw default allow incoming
 
 # Installing update-firewall
-ADD ./overlay/usr/local/ /usr/local/
+ADD ./patches/usr/local/ /usr/local/
 RUN cd /usr/local/update-firewall && \
     GOPATH=/usr/src/spouse GOBIN=$GOPATH/bin go get
 
 # Patch rootfs
-ADD ./overlay/etc/ /etc/
+ADD ./patches/etc/ /etc/
 RUN systemctl disable docker; systemctl enable docker
 
 
