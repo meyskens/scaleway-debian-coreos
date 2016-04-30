@@ -8,7 +8,7 @@ import (
     "os"
     "strings"
     )
-    
+
 var allowedIps []string
 
 func main(){
@@ -22,7 +22,7 @@ func main(){
 
 func check() {
 	keyAndSecret:=strings.Split(os.Getenv("FWUPD_LOGIN"), ":")
-	api, err := scwapi.NewScalewayAPI("https://api.scaleway.com", "https://account.scaleway.com", keyAndSecret[0],keyAndSecret[1])
+	api, err := scwapi.NewScalewayAPI(keyAndSecret[0],keyAndSecret[1],"updatefirewall/1")
 	if (err != nil){
 	    fmt.Println("Error")
 	    fmt.Println(err)
@@ -48,7 +48,7 @@ func check() {
 		for _, IP := range allowedIps{
 			unallowIP(IP)
 		}
-		
+
 		for _, IP := range newIPs{
 			allowIP(IP)
 		}
@@ -58,12 +58,12 @@ func check() {
 
 func testEq(a, b []string) bool {
 
-    if a == nil && b == nil { 
-        return true; 
+    if a == nil && b == nil {
+        return true;
     }
 
-    if a == nil || b == nil { 
-        return false; 
+    if a == nil || b == nil {
+        return false;
     }
 
     if len(a) != len(b) {
