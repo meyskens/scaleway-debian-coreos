@@ -5,6 +5,7 @@
 package scwapi
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -12,11 +13,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
+	"github.com/docker/docker/pkg/namesgenerator"
+	"github.com/dustin/go-humanize"
+	"github.com/moul/anonuuid"
 	"github.com/scaleway/scaleway-cli/pkg/utils"
-	"github.com/scaleway/scaleway-cli/vendor/github.com/Sirupsen/logrus"
-	log "github.com/scaleway/scaleway-cli/vendor/github.com/Sirupsen/logrus"
-	"github.com/scaleway/scaleway-cli/vendor/github.com/docker/docker/pkg/namesgenerator"
-	"github.com/scaleway/scaleway-cli/vendor/github.com/dustin/go-humanize"
 )
 
 // ScalewayResolvedIdentifier represents a list of matching identifier for a specifier pattern
@@ -38,6 +40,8 @@ type ScalewayImageInterface struct {
 	Public       bool
 	Type         string
 	Organization string
+	Archs        []string
+	Region       string
 }
 
 // ResolveGateway tries to resolve a server public ip address, else returns the input string, i.e. IPv4, hostname
@@ -59,8 +63,7 @@ func ResolveGateway(api *ScalewayAPI, gateway string) (string, error) {
 	}
 
 	if len(servers) > 1 {
-		showResolverResults(gateway, servers)
-		return "", fmt.Errorf("Gateway '%s' is ambiguous", gateway)
+		return "", showResolverResults(gateway, servers)
 	}
 
 	// if len(servers) == 1 {
@@ -91,7 +94,7 @@ func CreateVolumeFromHumanSize(api *ScalewayAPI, size string) (*string, error) {
 	return &volumeID, nil
 }
 
-// fillIdentifierCache fills the cache by fetching fro the API
+// fillIdentifierCache fills the cache by fetching from the API
 func fillIdentifierCache(api *ScalewayAPI, identifierType int) {
 	log.Debugf("Filling the cache")
 	var wg sync.WaitGroup
@@ -130,24 +133,22 @@ func fillIdentifierCache(api *ScalewayAPI, identifierType int) {
 }
 
 // GetIdentifier returns a an identifier if the resolved needles only match one element, else, it exists the program
-func GetIdentifier(api *ScalewayAPI, needle string) *ScalewayResolverResult {
+func GetIdentifier(api *ScalewayAPI, needle string) (*ScalewayResolverResult, error) {
 	idents := ResolveIdentifier(api, needle)
 
 	if len(idents) == 1 {
-		return &idents[0]
+		return &idents[0], nil
 	}
 	if len(idents) == 0 {
-		log.Fatalf("No such identifier: %s", needle)
+		return nil, fmt.Errorf("No such identifier: %s", needle)
 	}
-	log.Errorf("Too many candidates for %s (%d)", needle, len(idents))
 
 	sort.Sort(idents)
 	for _, identifier := range idents {
 		// FIXME: also print the name
 		fmt.Fprintf(os.Stderr, "- %s\n", identifier.Identifier)
 	}
-	os.Exit(1)
-	return nil
+	return nil, fmt.Errorf("Too many candidates for %s (%d)", needle, len(idents))
 }
 
 // ResolveIdentifier resolves needle provided by the user
@@ -217,62 +218,43 @@ type InspectIdentifierResult struct {
 }
 
 // InspectIdentifiers inspects identifiers concurrently
-func InspectIdentifiers(api *ScalewayAPI, ci chan ScalewayResolvedIdentifier, cj chan InspectIdentifierResult) {
+func InspectIdentifiers(api *ScalewayAPI, ci chan ScalewayResolvedIdentifier, cj chan InspectIdentifierResult, arch string) {
 	var wg sync.WaitGroup
 	for {
 		idents, ok := <-ci
 		if !ok {
 			break
 		}
+		idents.Identifiers = FilterImagesByArch(idents.Identifiers, arch)
 		if len(idents.Identifiers) != 1 {
 			if len(idents.Identifiers) == 0 {
 				log.Errorf("Unable to resolve identifier %s", idents.Needle)
 			} else {
-				showResolverResults(idents.Needle, idents.Identifiers)
+				logrus.Fatal(showResolverResults(idents.Needle, idents.Identifiers))
 			}
 		} else {
 			ident := idents.Identifiers[0]
 			wg.Add(1)
 			go func() {
-				if ident.Type == IdentifierServer {
-					server, err := api.GetServer(ident.Identifier)
-					if err == nil {
-						cj <- InspectIdentifierResult{
-							Type:   ident.Type,
-							Object: server,
-						}
-					}
-				} else if ident.Type == IdentifierImage {
-					image, err := api.GetImage(ident.Identifier)
-					if err == nil {
-						cj <- InspectIdentifierResult{
-							Type:   ident.Type,
-							Object: image,
-						}
-					}
-				} else if ident.Type == IdentifierSnapshot {
-					snap, err := api.GetSnapshot(ident.Identifier)
-					if err == nil {
-						cj <- InspectIdentifierResult{
-							Type:   ident.Type,
-							Object: snap,
-						}
-					}
-				} else if ident.Type == IdentifierVolume {
-					volume, err := api.GetVolume(ident.Identifier)
-					if err == nil {
-						cj <- InspectIdentifierResult{
-							Type:   ident.Type,
-							Object: volume,
-						}
-					}
-				} else if ident.Type == IdentifierBootscript {
-					bootscript, err := api.GetBootscript(ident.Identifier)
-					if err == nil {
-						cj <- InspectIdentifierResult{
-							Type:   ident.Type,
-							Object: bootscript,
-						}
+				var obj interface{}
+				var err error
+
+				switch ident.Type {
+				case IdentifierServer:
+					obj, err = api.GetServer(ident.Identifier)
+				case IdentifierImage:
+					obj, err = api.GetImage(ident.Identifier)
+				case IdentifierSnapshot:
+					obj, err = api.GetSnapshot(ident.Identifier)
+				case IdentifierVolume:
+					obj, err = api.GetVolume(ident.Identifier)
+				case IdentifierBootscript:
+					obj, err = api.GetBootscript(ident.Identifier)
+				}
+				if err == nil && obj != nil {
+					cj <- InspectIdentifierResult{
+						Type:   ident.Type,
+						Object: obj,
 					}
 				}
 				wg.Done()
@@ -283,23 +265,62 @@ func InspectIdentifiers(api *ScalewayAPI, ci chan ScalewayResolvedIdentifier, cj
 	close(cj)
 }
 
+// ConfigCreateServer represents the options sent to CreateServer and defining a server
+type ConfigCreateServer struct {
+	ImageName         string
+	Name              string
+	Bootscript        string
+	Env               string
+	AdditionalVolumes string
+	DynamicIPRequired bool
+	IP                string
+	CommercialType    string
+}
+
 // CreateServer creates a server using API based on typical server fields
-func CreateServer(api *ScalewayAPI, imageName string, name string, bootscript string, env string, additionalVolumes string, dynamicIPRequired bool) (string, error) {
-	if name == "" {
-		name = strings.Replace(namesgenerator.GetRandomName(0), "_", "-", -1)
+func CreateServer(api *ScalewayAPI, c *ConfigCreateServer) (string, error) {
+	commercialType := os.Getenv("SCW_COMMERCIAL_TYPE")
+	if commercialType == "" {
+		commercialType = c.CommercialType
+	}
+
+	if c.Name == "" {
+		c.Name = strings.Replace(namesgenerator.GetRandomName(0), "_", "-", -1)
 	}
 
 	var server ScalewayServerDefinition
+
+	server.CommercialType = commercialType
 	server.Volumes = make(map[string]string)
-
-	server.DynamicIPRequired = &dynamicIPRequired
-
-	server.Tags = []string{}
-	if env != "" {
-		server.Tags = strings.Split(env, " ")
+	server.DynamicIPRequired = &c.DynamicIPRequired
+	if commercialType == "" {
+		return "", errors.New("You need to specify a commercial-type")
 	}
-	if additionalVolumes != "" {
-		volumes := strings.Split(additionalVolumes, " ")
+	if c.IP != "" {
+		if anonuuid.IsUUID(c.IP) == nil {
+			server.PublicIP = c.IP
+		} else {
+			ips, err := api.GetIPS()
+			if err != nil {
+				return "", err
+			}
+			for _, ip := range ips.IPS {
+				if ip.Address == c.IP {
+					server.PublicIP = ip.ID
+					break
+				}
+			}
+			if server.PublicIP == "" {
+				return "", fmt.Errorf("IP address %v not found", c.IP)
+			}
+		}
+	}
+	server.Tags = []string{}
+	if c.Env != "" {
+		server.Tags = strings.Split(c.Env, " ")
+	}
+	if c.AdditionalVolumes != "" {
+		volumes := strings.Split(c.AdditionalVolumes, " ")
 		for i := range volumes {
 			volumeID, err := CreateVolumeFromHumanSize(api, volumes[i])
 			if err != nil {
@@ -310,41 +331,68 @@ func CreateServer(api *ScalewayAPI, imageName string, name string, bootscript st
 			server.Volumes[volumeIDx] = *volumeID
 		}
 	}
-	server.Name = name
-	if bootscript != "" {
-		bootscript := api.GetBootscriptID(bootscript)
-		server.Bootscript = &bootscript
+	arch := os.Getenv("SCW_TARGET_ARCH")
+	if arch == "" {
+		switch server.CommercialType[:2] {
+		case "C1":
+			arch = "arm"
+		case "C2", "VC":
+			arch = "x86_64"
+		}
 	}
-
+	region := os.Getenv("SCW_TARGET_REGION")
+	if region == "" {
+		region = "fr-1"
+	}
+	imageIdentifier := &ScalewayImageIdentifier{
+		Arch:   arch,
+		Region: region,
+	}
+	server.Name = c.Name
 	inheritingVolume := false
-	_, err := humanize.ParseBytes(imageName)
+	_, err := humanize.ParseBytes(c.ImageName)
 	if err == nil {
 		// Create a new root volume
-		volumeID, err := CreateVolumeFromHumanSize(api, imageName)
-		if err != nil {
-			return "", err
+		volumeID, errCreateVol := CreateVolumeFromHumanSize(api, c.ImageName)
+		if errCreateVol != nil {
+			return "", errCreateVol
 		}
 		server.Volumes["0"] = *volumeID
 	} else {
 		// Use an existing image
-		// FIXME: handle snapshots
 		inheritingVolume = true
-		image := api.GetImageID(imageName, false)
-		if image != "" {
-			server.Image = &image
+		if anonuuid.IsUUID(c.ImageName) == nil {
+			server.Image = &c.ImageName
 		} else {
-			snapshotID := api.GetSnapshotID(imageName)
-			snapshot, err := api.GetSnapshot(snapshotID)
+			imageIdentifier, err = api.GetImageID(c.ImageName, arch)
 			if err != nil {
 				return "", err
 			}
-			if snapshot.BaseVolume.Identifier == "" {
-				return "", fmt.Errorf("snapshot %v does not have base volume", snapshot.Name)
+			if imageIdentifier.Identifier != "" {
+				server.Image = &imageIdentifier.Identifier
+			} else {
+				snapshotID, errGetSnapID := api.GetSnapshotID(c.ImageName)
+				if errGetSnapID != nil {
+					return "", errGetSnapID
+				}
+				snapshot, errGetSnap := api.GetSnapshot(snapshotID)
+				if errGetSnap != nil {
+					return "", errGetSnap
+				}
+				if snapshot.BaseVolume.Identifier == "" {
+					return "", fmt.Errorf("snapshot %v does not have base volume", snapshot.Name)
+				}
+				server.Volumes["0"] = snapshot.BaseVolume.Identifier
 			}
-			server.Volumes["0"] = snapshot.BaseVolume.Identifier
 		}
 	}
-
+	if c.Bootscript != "" {
+		bootscript, errGetBootScript := api.GetBootscriptID(c.Bootscript, imageIdentifier.Arch)
+		if errGetBootScript != nil {
+			return "", errGetBootScript
+		}
+		server.Bootscript = &bootscript
+	}
 	serverID, err := api.PostServer(server)
 	if err != nil {
 		return "", err
@@ -410,14 +458,30 @@ func WaitForServerReady(api *ScalewayAPI, serverID string, gateway string) (*Sca
 	promise := make(chan bool)
 	var server *ScalewayServer
 	var err error
+	var currentState string
 
 	go func() {
 		defer close(promise)
 
-		server, err = WaitForServerState(api, serverID, "running")
-		if err != nil {
-			promise <- false
-			return
+		for {
+			server, err = api.GetServer(serverID)
+			if err != nil {
+				promise <- false
+				return
+			}
+			if currentState != server.State {
+				log.Infof("Server changed state to '%s'", server.State)
+				currentState = server.State
+			}
+			if server.State == "running" {
+				break
+			}
+			if server.State == "stopped" {
+				err = fmt.Errorf("The server has been stopped")
+				promise <- false
+				return
+			}
+			time.Sleep(1 * time.Second)
 		}
 
 		if gateway == "" {
@@ -449,7 +513,7 @@ func WaitForServerReady(api *ScalewayAPI, serverID string, gateway string) (*Sca
 		select {
 		case done := <-promise:
 			utils.LogQuiet("\r \r")
-			if done == false {
+			if !done {
 				return nil, err
 			}
 			return server, nil
@@ -481,10 +545,12 @@ func (a ByCreationDate) Less(i, j int) bool { return a[j].CreationDate.Before(a[
 
 // StartServer start a server based on its needle, can optionaly block while server is booting
 func StartServer(api *ScalewayAPI, needle string, wait bool) error {
-	server := api.GetServerID(needle)
-
-	err := api.PostServerAction(server, "poweron")
+	server, err := api.GetServerID(needle)
 	if err != nil {
+		return err
+	}
+
+	if err = api.PostServerAction(server, "poweron"); err != nil {
 		if err.Error() == "server should be stopped" {
 			return fmt.Errorf("server %s is already started: %v", server, err)
 		}
@@ -532,4 +598,19 @@ func (a *ScalewayAPI) DeleteServerSafe(serverID string) error {
 	logrus.Errorf("Failed to delete server %s", serverID)
 	logrus.Errorf("Try to run 'scw rm -f %s' later", serverID)
 	return err
+}
+
+// GetSSHFingerprintFromServer returns an array which containts ssh-host-fingerprints
+func (a *ScalewayAPI) GetSSHFingerprintFromServer(serverID string) []string {
+	ret := []string{}
+
+	if value, err := a.GetUserdata(serverID, "ssh-host-fingerprints", false); err == nil {
+		PublicKeys := strings.Split(string(*value), "\n")
+		for i := range PublicKeys {
+			if fingerprint, err := utils.SSHGetFingerprint([]byte(PublicKeys[i])); err == nil {
+				ret = append(ret, fingerprint)
+			}
+		}
+	}
+	return ret
 }

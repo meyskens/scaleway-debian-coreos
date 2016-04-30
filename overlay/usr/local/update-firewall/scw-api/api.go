@@ -24,48 +24,53 @@ import (
 	"text/template"
 	"time"
 
-	log "github.com/scaleway/scaleway-cli/vendor/github.com/Sirupsen/logrus"
-	"github.com/scaleway/scaleway-cli/vendor/github.com/moul/anonuuid"
-	"github.com/scaleway/scaleway-cli/vendor/github.com/moul/http2curl"
+	log "github.com/Sirupsen/logrus"
+	"github.com/moul/anonuuid"
+	"github.com/moul/http2curl"
 )
 
 // Default values
 var (
-	ComputeAPI  = "https://api.scaleway.com/"
-	AccountAPI  = "https://account.scaleway.com/"
-	MetadataAPI = "http://169.254.42.42/"
+	ComputeAPI     = "https://api.scaleway.com/"
+	AccountAPI     = "https://account.scaleway.com/"
+	MetadataAPI    = "http://169.254.42.42/"
+	MarketplaceAPI = "https://api-marketplace.scaleway.com"
 )
+
+func init() {
+	if url := os.Getenv("SCW_COMPUTE_API"); url != "" {
+		ComputeAPI = url
+	}
+	if url := os.Getenv("SCW_ACCOUNT_API"); url != "" {
+		AccountAPI = url
+	}
+	if url := os.Getenv("SCW_METADATA_API"); url != "" {
+		MetadataAPI = url
+	}
+	if url := os.Getenv("SCW_MARKETPLACE_API"); url != "" {
+		MarketplaceAPI = url
+	}
+}
 
 // ScalewayAPI is the interface used to communicate with the Scaleway API
 type ScalewayAPI struct {
-	// ComputeAPI is the endpoint to the Scaleway API
-	ComputeAPI string
-
-	// AccountAPI is the endpoint to the Scaleway Account API
-	AccountAPI string
-
-	// APIEndPoint or ACCOUNTEndPoint
-	APIUrl string
-
 	// Organization is the identifier of the Scaleway organization
 	Organization string
 
 	// Token is the authentication token for the Scaleway organization
 	Token string
 
-	verbose bool
-
 	// Password is the authentication password
 	password string
+
+	userAgent string
 
 	// Cache is used to quickly resolve identifiers from names
 	Cache *ScalewayCache
 
-	client *http.Client
-	// Used when switching from an API to another
-	oldTransport *http.RoundTripper
-	anonuuid     anonuuid.AnonUUID
-	isMetadata   bool
+	client   *http.Client
+	anonuuid anonuuid.AnonUUID
+	verbose  bool
 }
 
 // ScalewayAPIError represents a Scaleway API Error
@@ -170,7 +175,7 @@ type ScalewayVolumes struct {
 	Volumes []ScalewayVolume `json:"volumes,omitempty"`
 }
 
-// ScalewayVolumeDefinition represents a Scaleway C1 volume definition
+// ScalewayVolumeDefinition represents a Scaleway volume definition
 type ScalewayVolumeDefinition struct {
 	// Name is the user-defined name of the volume
 	Name string `json:"name"`
@@ -185,7 +190,7 @@ type ScalewayVolumeDefinition struct {
 	Organization string `json:"organization"`
 }
 
-// ScalewayVolumePutDefinition represents a Scaleway C1 volume with nullable fields (for PUT)
+// ScalewayVolumePutDefinition represents a Scaleway volume with nullable fields (for PUT)
 type ScalewayVolumePutDefinition struct {
 	Identifier       *string `json:"id,omitempty"`
 	Size             *uint64 `json:"size,omitempty"`
@@ -231,6 +236,14 @@ type ScalewayImage struct {
 	Arch string `json:"arch,omitempty"`
 
 	// FIXME: extra_volumes
+}
+
+// ScalewayImageIdentifier represents a Scaleway Image Identifier
+type ScalewayImageIdentifier struct {
+	Identifier string
+	Arch       string
+	Region     string
+	Owner      string
 }
 
 // ScalewayOneImage represents the response of a GET /images/UUID API call
@@ -285,61 +298,29 @@ type ScalewaySnapshots struct {
 	Snapshots []ScalewaySnapshot `json:"snapshots,omitempty"`
 }
 
-// ScalewayBootCmdArgs represents the boot arguments of a bootscript
-type ScalewayBootCmdArgs struct {
-	// Identifier is the unique identifier of boot args
-	Identifier string `json:"id,omitempty"`
-
-	// Value is the content of the cmd args
-	Value string `json:"value,omitempty"`
-}
-
-// ScalewayInitrd represents the initrd used by a bootscript
-type ScalewayInitrd struct {
-	// Identifier is the unique identifier of the initrd
-	Identifier string `json:"id,omitempty"`
-
-	// Path is the path to the initrd used
-	Path string `json:"path,omitempty"`
-
-	// Title is the title of the initrd used
-	Title string `json:"title,omitempty"`
-}
-
-// ScalewayKernel represents a kernel used on C1 servers
-type ScalewayKernel struct {
-	// Identifier is the unique identifier of the kernel
-	Identifier string `json:"id,omitempty"`
-
-	// DTB is the kernel DTB used by this kernel
-	DTB string `json:"dtb"`
-
-	// Path is the path to the kernel image
-	Path string `json:"path,omitempty"`
-
-	// Title is the title of the kernel
-	Title string `json:"title,omitempty"`
-}
-
 // ScalewayBootscript represents a Scaleway Bootscript
 type ScalewayBootscript struct {
+	Bootcmdargs string `json:"bootcmdargs,omitempty"`
+	Dtb         string `json:"dtb,omitempty"`
+	Initrd      string `json:"initrd,omitempty"`
+	Kernel      string `json:"kernel,omitempty"`
+
+	// Arch is the architecture target of the bootscript
+	Arch string `json:"architecture,omitempty"`
+
 	// Identifier is a unique identifier for the bootscript
 	Identifier string `json:"id,omitempty"`
+
+	// Organization is the owner of the bootscript
+	Organization string `json:"organization,omitempty"`
 
 	// Name is a user-defined name for the bootscript
 	Title string `json:"title,omitempty"`
 
-	// BootCmdArgs represents the arguments used to boot
-	BootCmdArgs ScalewayBootCmdArgs `json:"bootcmdargs,omitempty"`
-
-	// Initrd is the initrd used by this bootscript
-	Initrd ScalewayInitrd `json:"initrd,omitempty"`
-
-	// Kernel is the kernel associated to this server
-	Kernel ScalewayKernel `json:"kernel,omitempty"`
-
 	// Public is true for public bootscripts and false for user bootscripts
 	Public bool `json:"public,omitempty"`
+
+	Default bool `json:"default,omitempty"`
 }
 
 // ScalewayOneBootscript represents the response of a GET /bootscripts/UUID API call
@@ -419,12 +400,12 @@ type ScalewayNewSecurityGroupRule struct {
 // ScalewaySecurityGroups definition
 type ScalewaySecurityGroups struct {
 	Description           string                  `json:"description"`
-	EnableDefaultSecurity bool                    `json:"enable_default_security"`
 	ID                    string                  `json:"id"`
 	Organization          string                  `json:"organization"`
 	Name                  string                  `json:"name"`
-	OrganizationDefault   bool                    `json:"organization_default"`
 	Servers               []ScalewaySecurityGroup `json:"servers"`
+	EnableDefaultSecurity bool                    `json:"enable_default_security"`
+	OrganizationDefault   bool                    `json:"organization_default"`
 }
 
 // ScalewayGetSecurityGroups represents the response of a GET /security_groups/
@@ -475,8 +456,11 @@ type ScalewayNewSecurityGroup struct {
 	Description  string `json:"description"`
 }
 
-// ScalewayServer represents a Scaleway C1 server
+// ScalewayServer represents a Scaleway server
 type ScalewayServer struct {
+	// Arch is the architecture target of the server
+	Arch string `json:"arch,omitempty"`
+
 	// Identifier is a unique identifier for the server
 	Identifier string `json:"id,omitempty"`
 
@@ -525,17 +509,34 @@ type ScalewayServer struct {
 	// Organization is the owner of the server
 	Organization string `json:"organization,omitempty"`
 
+	// CommercialType is the commercial type of the server (i.e: C1, C2[SML], VC1S)
+	CommercialType string `json:"commercial_type,omitempty"`
+
 	// Location of the server
 	Location struct {
-		Platform string `json:"platform_id,omitempty"`
-		Chassis  string `json:"chassis_id,omitempty"`
-		Blade    string `json:"blade_id,omitempty"`
-		Node     string `json:"node_id,omitempty"`
+		Platform   string `json:"platform_id,omitempty"`
+		Chassis    string `json:"chassis_id,omitempty"`
+		Cluster    string `json:"cluster_id,omitempty"`
+		Hypervisor string `json:"hypervisor_id,omitempty"`
+		Blade      string `json:"blade_id,omitempty"`
+		Node       string `json:"node_id,omitempty"`
 	} `json:"location,omitempty"`
+
+	IPV6 *ScalewayIPV6Definition `json:"ipv6,omitempty"`
+
+	EnableIPV6 bool `json:"enable_ipv6,omitempty"`
 }
 
-// ScalewayServerPatchDefinition represents a Scaleway C1 server with nullable fields (for PATCH)
+// ScalewayIPV6Definition represents a Scaleway ipv6
+type ScalewayIPV6Definition struct {
+	Netmask string `json:"netmask"`
+	Gateway string `json:"gateway"`
+	Address string `json:"address"`
+}
+
+// ScalewayServerPatchDefinition represents a Scaleway server with nullable fields (for PATCH)
 type ScalewayServerPatchDefinition struct {
+	Arch              *string                    `json:"arch,omitempty"`
 	Name              *string                    `json:"name,omitempty"`
 	CreationDate      *string                    `json:"creation_date,omitempty"`
 	ModificationDate  *string                    `json:"modification_date,omitempty"`
@@ -545,15 +546,17 @@ type ScalewayServerPatchDefinition struct {
 	State             *string                    `json:"state,omitempty"`
 	StateDetail       *string                    `json:"state_detail,omitempty"`
 	PrivateIP         *string                    `json:"private_ip,omitempty"`
-	Bootscript        *ScalewayBootscript        `json:"bootscript,omitempty"`
+	Bootscript        *string                    `json:"bootscript,omitempty"`
 	Hostname          *string                    `json:"hostname,omitempty"`
 	Volumes           *map[string]ScalewayVolume `json:"volumes,omitempty"`
 	SecurityGroup     *ScalewaySecurityGroup     `json:"security_group,omitempty"`
 	Organization      *string                    `json:"organization,omitempty"`
 	Tags              *[]string                  `json:"tags,omitempty"`
+	IPV6              *ScalewayIPV6Definition    `json:"ipv6,omitempty"`
+	EnableIPV6        *bool                      `json:"enable_ipv6,omitempty"`
 }
 
-// ScalewayServerDefinition represents a Scaleway C1 server with image definition
+// ScalewayServerDefinition represents a Scaleway server with image definition
 type ScalewayServerDefinition struct {
 	// Name is the user-defined name of the server
 	Name string `json:"name"`
@@ -575,6 +578,13 @@ type ScalewayServerDefinition struct {
 
 	// Organization is the owner of the server
 	Organization string `json:"organization"`
+
+	// CommercialType is the commercial type of the server (i.e: C1, C2[SML], VC1S)
+	CommercialType string `json:"commercial_type"`
+
+	PublicIP string `json:"public_ip,omitempty"`
+
+	EnableIPV6 bool `json:"enable_ipv6,omitempty"`
 }
 
 // ScalewayOneServer represents the response of a GET /servers/UUID API call
@@ -582,13 +592,13 @@ type ScalewayOneServer struct {
 	Server ScalewayServer `json:"server,omitempty"`
 }
 
-// ScalewayServers represents a group of Scaleway C1 servers
+// ScalewayServers represents a group of Scaleway servers
 type ScalewayServers struct {
 	// Servers holds scaleway servers of the response
 	Servers []ScalewayServer `json:"servers,omitempty"`
 }
 
-// ScalewayServerAction represents an action to perform on a Scaleway C1 server
+// ScalewayServerAction represents an action to perform on a Scaleway server
 type ScalewayServerAction struct {
 	// Action is the name of the action to trigger
 	Action string `json:"action,omitempty"`
@@ -631,22 +641,26 @@ type ScalewayTokensDefinition struct {
 	Token ScalewayTokenDefinition `json:"token"`
 }
 
+// ScalewayContainerData represents a Scaleway container data (S3)
 type ScalewayContainerData struct {
 	LastModified string `json:"last_modified"`
 	Name         string `json:"name"`
 	Size         string `json:"size"`
 }
 
+// ScalewayGetContainerDatas represents a list of Scaleway containers data (S3)
 type ScalewayGetContainerDatas struct {
 	Container []ScalewayContainerData `json:"container"`
 }
 
+// ScalewayContainer represents a Scaleway container (S3)
 type ScalewayContainer struct {
 	ScalewayOrganizationDefinition `json:"organization"`
 	Name                           string `json:"name"`
 	Size                           string `json:"size"`
 }
 
+// ScalewayGetContainers represents a list of Scaleway containers (S3)
 type ScalewayGetContainers struct {
 	Containers []ScalewayContainer `json:"containers"`
 }
@@ -695,7 +709,8 @@ type ScalewayUsersDefinition struct {
 
 // ScalewayKeyDefinition represents a key
 type ScalewayKeyDefinition struct {
-	Key string `json:"key"`
+	Key         string `json:"key"`
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // ScalewayUserPatchSSHKeyDefinition represents a User Patch
@@ -734,6 +749,7 @@ type ScalewayUserdatas struct {
 	UserData []string `json:"user_data"`
 }
 
+// ScalewayQuota represents a map of quota (name, value)
 type ScalewayQuota map[string]int
 
 // ScalewayGetQuotas represents the response of GET /organizations/{orga_id}/quotas
@@ -752,29 +768,90 @@ var FuncMap = template.FuncMap{
 	},
 }
 
+// MarketLocalImageDefinition represents localImage of marketplace version
+type MarketLocalImageDefinition struct {
+	Arch string `json:"arch"`
+	ID   string `json:"id"`
+	Zone string `json:"zone"`
+}
+
+// MarketLocalImages represents an array of local images
+type MarketLocalImages struct {
+	LocalImages []MarketLocalImageDefinition `json:"local_images"`
+}
+
+// MarketLocalImage represents local image
+type MarketLocalImage struct {
+	LocalImages MarketLocalImageDefinition `json:"local_image"`
+}
+
+// MarketVersionDefinition represents version of marketplace image
+type MarketVersionDefinition struct {
+	CreationDate string `json:"creation_date"`
+	ID           string `json:"id"`
+	Image        struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"image"`
+	ModificationDate string `json:"modification_date"`
+	Name             string `json:"name"`
+	MarketLocalImages
+}
+
+// MarketVersions represents an array of marketplace image versions
+type MarketVersions struct {
+	Versions []MarketVersionDefinition `json:"versions"`
+}
+
+// MarketVersion represents version of marketplace image
+type MarketVersion struct {
+	Version MarketVersionDefinition `json:"version"`
+}
+
+// MarketImage represents MarketPlace image
+type MarketImage struct {
+	Categories           []string `json:"categories"`
+	CreationDate         string   `json:"creation_date"`
+	CurrentPublicVersion string   `json:"current_public_version"`
+	Description          string   `json:"description"`
+	ID                   string   `json:"id"`
+	Logo                 string   `json:"logo"`
+	ModificationDate     string   `json:"modification_date"`
+	Name                 string   `json:"name"`
+	Organization         struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"organization"`
+	Public bool `json:"-"`
+	MarketVersions
+}
+
+// MarketImages represents MarketPlace images
+type MarketImages struct {
+	Images []MarketImage `json:"images"`
+}
+
 // NewScalewayAPI creates a ready-to-use ScalewayAPI client
-func NewScalewayAPI(apiEndPoint, accountEndPoint, organization, token string) (*ScalewayAPI, error) {
+func NewScalewayAPI(organization, token, userAgent string) (*ScalewayAPI, error) {
 	cache, err := NewScalewayCache()
 	if err != nil {
 		return nil, err
 	}
 	s := &ScalewayAPI{
 		// exposed
-		ComputeAPI:   apiEndPoint,
-		AccountAPI:   accountEndPoint,
-		APIUrl:       apiEndPoint,
 		Organization: organization,
 		Token:        token,
 		Cache:        cache,
-		verbose:      os.Getenv("SCALEWAY_VERBOSE_API") != "",
+		verbose:      os.Getenv("SCW_VERBOSE_API") != "",
 		password:     "",
+		userAgent:    userAgent,
 
 		// internal
 		anonuuid: *anonuuid.New(),
 		client:   &http.Client{},
 	}
 
-	if os.Getenv("SCALEWAY_TLSVERIFY") == "0" {
+	if os.Getenv("SCW_TLSVERIFY") == "0" {
 		s.client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -783,14 +860,19 @@ func NewScalewayAPI(apiEndPoint, accountEndPoint, organization, token string) (*
 	return s, nil
 }
 
+// ClearCache clears the cache
+func (s *ScalewayAPI) ClearCache() {
+	s.Cache.Clear()
+}
+
 // Sync flushes out the cache to the disk
 func (s *ScalewayAPI) Sync() {
 	s.Cache.Save()
 }
 
 // GetResponse returns an http.Response object for the requested resource
-func (s *ScalewayAPI) GetResponse(resource string) (*http.Response, error) {
-	uri := fmt.Sprintf("%s/%s", strings.TrimRight(s.APIUrl, "/"), resource)
+func (s *ScalewayAPI) GetResponse(apiURL, resource string) (*http.Response, error) {
+	uri := fmt.Sprintf("%s/%s", strings.TrimRight(apiURL, "/"), resource)
 
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
@@ -798,6 +880,7 @@ func (s *ScalewayAPI) GetResponse(resource string) (*http.Response, error) {
 	}
 	req.Header.Set("X-Auth-Token", s.Token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", s.userAgent)
 
 	curl, err := http2curl.GetCurlCommand(req)
 	if err != nil {
@@ -812,8 +895,8 @@ func (s *ScalewayAPI) GetResponse(resource string) (*http.Response, error) {
 }
 
 // PostResponse returns an http.Response object for the updated resource
-func (s *ScalewayAPI) PostResponse(resource string, data interface{}) (*http.Response, error) {
-	uri := fmt.Sprintf("%s/%s", strings.TrimRight(s.APIUrl, "/"), resource)
+func (s *ScalewayAPI) PostResponse(apiURL, resource string, data interface{}) (*http.Response, error) {
+	uri := fmt.Sprintf("%s/%s", strings.TrimRight(apiURL, "/"), resource)
 	payload := new(bytes.Buffer)
 	encoder := json.NewEncoder(payload)
 	if err := encoder.Encode(data); err != nil {
@@ -826,6 +909,7 @@ func (s *ScalewayAPI) PostResponse(resource string, data interface{}) (*http.Res
 	}
 	req.Header.Set("X-Auth-Token", s.Token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", s.userAgent)
 
 	curl, err := http2curl.GetCurlCommand(req)
 	if err != nil {
@@ -841,8 +925,8 @@ func (s *ScalewayAPI) PostResponse(resource string, data interface{}) (*http.Res
 }
 
 // PatchResponse returns an http.Response object for the updated resource
-func (s *ScalewayAPI) PatchResponse(resource string, data interface{}) (*http.Response, error) {
-	uri := fmt.Sprintf("%s/%s", strings.TrimRight(s.APIUrl, "/"), resource)
+func (s *ScalewayAPI) PatchResponse(apiURL, resource string, data interface{}) (*http.Response, error) {
+	uri := fmt.Sprintf("%s/%s", strings.TrimRight(apiURL, "/"), resource)
 	payload := new(bytes.Buffer)
 	encoder := json.NewEncoder(payload)
 	if err := encoder.Encode(data); err != nil {
@@ -855,6 +939,7 @@ func (s *ScalewayAPI) PatchResponse(resource string, data interface{}) (*http.Re
 	}
 	req.Header.Set("X-Auth-Token", s.Token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", s.userAgent)
 
 	curl, err := http2curl.GetCurlCommand(req)
 	if err != nil {
@@ -870,8 +955,8 @@ func (s *ScalewayAPI) PatchResponse(resource string, data interface{}) (*http.Re
 }
 
 // PutResponse returns an http.Response object for the updated resource
-func (s *ScalewayAPI) PutResponse(resource string, data interface{}) (*http.Response, error) {
-	uri := fmt.Sprintf("%s/%s", strings.TrimRight(s.APIUrl, "/"), resource)
+func (s *ScalewayAPI) PutResponse(apiURL, resource string, data interface{}) (*http.Response, error) {
+	uri := fmt.Sprintf("%s/%s", strings.TrimRight(apiURL, "/"), resource)
 	payload := new(bytes.Buffer)
 	encoder := json.NewEncoder(payload)
 	if err := encoder.Encode(data); err != nil {
@@ -884,6 +969,7 @@ func (s *ScalewayAPI) PutResponse(resource string, data interface{}) (*http.Resp
 	}
 	req.Header.Set("X-Auth-Token", s.Token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", s.userAgent)
 
 	curl, err := http2curl.GetCurlCommand(req)
 	if err != nil {
@@ -899,8 +985,8 @@ func (s *ScalewayAPI) PutResponse(resource string, data interface{}) (*http.Resp
 }
 
 // DeleteResponse returns an http.Response object for the deleted resource
-func (s *ScalewayAPI) DeleteResponse(resource string) (*http.Response, error) {
-	uri := fmt.Sprintf("%s/%s", strings.TrimRight(s.APIUrl, "/"), resource)
+func (s *ScalewayAPI) DeleteResponse(apiURL, resource string) (*http.Response, error) {
+	uri := fmt.Sprintf("%s/%s", strings.TrimRight(apiURL, "/"), resource)
 
 	req, err := http.NewRequest("DELETE", uri, nil)
 	if err != nil {
@@ -908,6 +994,7 @@ func (s *ScalewayAPI) DeleteResponse(resource string) (*http.Response, error) {
 	}
 	req.Header.Set("X-Auth-Token", s.Token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", s.userAgent)
 
 	curl, err := http2curl.GetCurlCommand(req)
 	if err != nil {
@@ -974,11 +1061,13 @@ func (s *ScalewayAPI) GetServers(all bool, limit int) (*[]ScalewayServer, error)
 	if all && limit == 0 {
 		s.Cache.ClearServers()
 	}
-	resp, err := s.GetResponse("servers?" + query.Encode())
+	resp, err := s.GetResponse(ComputeAPI, "servers?"+query.Encode())
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var servers ScalewayServers
 
@@ -990,7 +1079,8 @@ func (s *ScalewayAPI) GetServers(all bool, limit int) (*[]ScalewayServer, error)
 		return nil, err
 	}
 	for _, server := range servers.Servers {
-		s.Cache.InsertServer(server.Identifier, server.Name)
+		// FIXME region, arch, owner, title
+		s.Cache.InsertServer(server.Identifier, "fr-1", server.Arch, server.Organization, server.Name)
 	}
 	// FIXME: when API limit is ready, remove the following code
 	if limit > 0 && limit < len(servers.Servers) {
@@ -1001,11 +1091,13 @@ func (s *ScalewayAPI) GetServers(all bool, limit int) (*[]ScalewayServer, error)
 
 // GetServer gets a server from the ScalewayAPI
 func (s *ScalewayAPI) GetServer(serverID string) (*ScalewayServer, error) {
-	resp, err := s.GetResponse("servers/" + serverID)
+	resp, err := s.GetResponse(ComputeAPI, "servers/"+serverID)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1017,7 +1109,8 @@ func (s *ScalewayAPI) GetServer(serverID string) (*ScalewayServer, error) {
 	if err = json.Unmarshal(body, &oneServer); err != nil {
 		return nil, err
 	}
-	s.Cache.InsertServer(oneServer.Server.Identifier, oneServer.Server.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertServer(oneServer.Server.Identifier, "fr-1", oneServer.Server.Arch, oneServer.Server.Organization, oneServer.Server.Name)
 	return &oneServer.Server, nil
 }
 
@@ -1026,30 +1119,32 @@ func (s *ScalewayAPI) PostServerAction(serverID, action string) error {
 	data := ScalewayServerAction{
 		Action: action,
 	}
-	resp, err := s.PostResponse(fmt.Sprintf("servers/%s/action", serverID), data)
+	resp, err := s.PostResponse(ComputeAPI, fmt.Sprintf("servers/%s/action", serverID), data)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	if _, err = s.handleHTTPError([]int{202}, resp); err != nil {
-		return err
-	}
-	return nil
+	_, err = s.handleHTTPError([]int{202}, resp)
+	return err
 }
 
 // DeleteServer deletes a server
 func (s *ScalewayAPI) DeleteServer(serverID string) error {
-	resp, err := s.DeleteResponse(fmt.Sprintf("servers/%s", serverID))
+	defer s.Cache.RemoveServer(serverID)
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("servers/%s", serverID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if _, err = s.handleHTTPError([]int{204}, resp); err != nil {
 		return err
 	}
-	s.Cache.RemoveServer(serverID)
 	return nil
 }
 
@@ -1057,11 +1152,13 @@ func (s *ScalewayAPI) DeleteServer(serverID string) error {
 func (s *ScalewayAPI) PostServer(definition ScalewayServerDefinition) (string, error) {
 	definition.Organization = s.Organization
 
-	resp, err := s.PostResponse("servers", definition)
+	resp, err := s.PostResponse(ComputeAPI, "servers", definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{201}, resp)
 	if err != nil {
@@ -1072,20 +1169,20 @@ func (s *ScalewayAPI) PostServer(definition ScalewayServerDefinition) (string, e
 	if err = json.Unmarshal(body, &server); err != nil {
 		return "", err
 	}
-	s.Cache.InsertServer(server.Server.Identifier, server.Server.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertServer(server.Server.Identifier, "fr-1", server.Server.Arch, server.Server.Organization, server.Server.Name)
 	return server.Server.Identifier, nil
 }
 
 // PatchUserSSHKey updates a user
 func (s *ScalewayAPI) PatchUserSSHKey(UserID string, definition ScalewayUserPatchSSHKeyDefinition) error {
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
-	resp, err := s.PatchResponse(fmt.Sprintf("users/%s", UserID), definition)
+	resp, err := s.PatchResponse(AccountAPI, fmt.Sprintf("users/%s", UserID), definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
 	if _, err := s.handleHTTPError([]int{200}, resp); err != nil {
 		return err
 	}
@@ -1094,11 +1191,13 @@ func (s *ScalewayAPI) PatchUserSSHKey(UserID string, definition ScalewayUserPatc
 
 // PatchServer updates a server
 func (s *ScalewayAPI) PatchServer(serverID string, definition ScalewayServerPatchDefinition) error {
-	resp, err := s.PatchResponse(fmt.Sprintf("servers/%s", serverID), definition)
+	resp, err := s.PatchResponse(ComputeAPI, fmt.Sprintf("servers/%s", serverID), definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if _, err := s.handleHTTPError([]int{200}, resp); err != nil {
 		return err
@@ -1113,11 +1212,13 @@ func (s *ScalewayAPI) PostSnapshot(volumeID string, name string) (string, error)
 		Name:             name,
 		Organization:     s.Organization,
 	}
-	resp, err := s.PostResponse("snapshots", definition)
+	resp, err := s.PostResponse(ComputeAPI, "snapshots", definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{201}, resp)
 	if err != nil {
@@ -1128,27 +1229,30 @@ func (s *ScalewayAPI) PostSnapshot(volumeID string, name string) (string, error)
 	if err = json.Unmarshal(body, &snapshot); err != nil {
 		return "", err
 	}
-	s.Cache.InsertSnapshot(snapshot.Snapshot.Identifier, snapshot.Snapshot.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertSnapshot(snapshot.Snapshot.Identifier, "fr-1", "", snapshot.Snapshot.Organization, snapshot.Snapshot.Name)
 	return snapshot.Snapshot.Identifier, nil
 }
 
 // PostImage creates a new image
-func (s *ScalewayAPI) PostImage(volumeID string, name string, bootscript string) (string, error) {
+func (s *ScalewayAPI) PostImage(volumeID string, name string, bootscript string, arch string) (string, error) {
 	definition := ScalewayImageDefinition{
 		SnapshotIDentifier: volumeID,
 		Name:               name,
 		Organization:       s.Organization,
-		Arch:               "arm",
+		Arch:               arch,
 	}
 	if bootscript != "" {
 		definition.DefaultBootscript = &bootscript
 	}
 
-	resp, err := s.PostResponse("images", definition)
+	resp, err := s.PostResponse(ComputeAPI, "images", definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{201}, resp)
 	if err != nil {
@@ -1159,7 +1263,8 @@ func (s *ScalewayAPI) PostImage(volumeID string, name string, bootscript string)
 	if err = json.Unmarshal(body, &image); err != nil {
 		return "", err
 	}
-	s.Cache.InsertImage(image.Image.Identifier, image.Image.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertImage(image.Image.Identifier, "fr-1", image.Image.Arch, image.Image.Organization, image.Image.Name, "")
 	return image.Image.Identifier, nil
 }
 
@@ -1170,11 +1275,13 @@ func (s *ScalewayAPI) PostVolume(definition ScalewayVolumeDefinition) (string, e
 		definition.Type = "l_ssd"
 	}
 
-	resp, err := s.PostResponse("volumes", definition)
+	resp, err := s.PostResponse(ComputeAPI, "volumes", definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{201}, resp)
 	if err != nil {
@@ -1191,19 +1298,19 @@ func (s *ScalewayAPI) PostVolume(definition ScalewayVolumeDefinition) (string, e
 
 // PutVolume updates a volume
 func (s *ScalewayAPI) PutVolume(volumeID string, definition ScalewayVolumePutDefinition) error {
-	resp, err := s.PutResponse(fmt.Sprintf("volumes/%s", volumeID), definition)
+	resp, err := s.PutResponse(ComputeAPI, fmt.Sprintf("volumes/%s", volumeID), definition)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	if _, err := s.handleHTTPError([]int{200}, resp); err != nil {
-		return err
-	}
-	return nil
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
 }
 
-// ResolveServer attempts the find a matching Identifier for the input string
+// ResolveServer attempts to find a matching Identifier for the input string
 func (s *ScalewayAPI) ResolveServer(needle string) (ScalewayResolverResults, error) {
 	servers := s.Cache.LookUpServers(needle, true)
 	if len(servers) == 0 {
@@ -1215,7 +1322,19 @@ func (s *ScalewayAPI) ResolveServer(needle string) (ScalewayResolverResults, err
 	return servers, nil
 }
 
-// ResolveSnapshot attempts the find a matching Identifier for the input string
+// ResolveVolume attempts to find a matching Identifier for the input string
+func (s *ScalewayAPI) ResolveVolume(needle string) (ScalewayResolverResults, error) {
+	volumes := s.Cache.LookUpVolumes(needle, true)
+	if len(volumes) == 0 {
+		if _, err := s.GetVolumes(); err != nil {
+			return nil, err
+		}
+		volumes = s.Cache.LookUpVolumes(needle, true)
+	}
+	return volumes, nil
+}
+
+// ResolveSnapshot attempts to find a matching Identifier for the input string
 func (s *ScalewayAPI) ResolveSnapshot(needle string) (ScalewayResolverResults, error) {
 	snapshots := s.Cache.LookUpSnapshots(needle, true)
 	if len(snapshots) == 0 {
@@ -1227,7 +1346,7 @@ func (s *ScalewayAPI) ResolveSnapshot(needle string) (ScalewayResolverResults, e
 	return snapshots, nil
 }
 
-// ResolveImage attempts the find a matching Identifier for the input string
+// ResolveImage attempts to find a matching Identifier for the input string
 func (s *ScalewayAPI) ResolveImage(needle string) (ScalewayResolverResults, error) {
 	images := s.Cache.LookUpImages(needle, true)
 	if len(images) == 0 {
@@ -1239,7 +1358,7 @@ func (s *ScalewayAPI) ResolveImage(needle string) (ScalewayResolverResults, erro
 	return images, nil
 }
 
-// ResolveBootscript attempts the find a matching Identifier for the input string
+// ResolveBootscript attempts to find a matching Identifier for the input string
 func (s *ScalewayAPI) ResolveBootscript(needle string) (ScalewayResolverResults, error) {
 	bootscripts := s.Cache.LookUpBootscripts(needle, true)
 	if len(bootscripts) == 0 {
@@ -1252,37 +1371,81 @@ func (s *ScalewayAPI) ResolveBootscript(needle string) (ScalewayResolverResults,
 }
 
 // GetImages gets the list of images from the ScalewayAPI
-func (s *ScalewayAPI) GetImages() (*[]ScalewayImage, error) {
-	query := url.Values{}
-	s.Cache.ClearImages()
-	resp, err := s.GetResponse("images?" + query.Encode())
+func (s *ScalewayAPI) GetImages() (*[]MarketImage, error) {
+	images, err := s.GetMarketPlaceImages("")
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
+	s.Cache.ClearImages()
+	for i, image := range images.Images {
+		if image.CurrentPublicVersion != "" {
+			for _, version := range image.Versions {
+				if version.ID == image.CurrentPublicVersion {
+					for _, localImage := range version.LocalImages {
+						images.Images[i].Public = true
+						s.Cache.InsertImage(localImage.ID, localImage.Zone, localImage.Arch, image.Organization.ID, image.Name, image.CurrentPublicVersion)
+					}
+				}
+			}
+		}
+	}
+	resp, err := s.GetResponse(ComputeAPI, "images?organization="+s.Organization)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
 		return nil, err
 	}
-	var images ScalewayImages
+	var OrgaImages ScalewayImages
 
-	if err = json.Unmarshal(body, &images); err != nil {
+	if err = json.Unmarshal(body, &OrgaImages); err != nil {
 		return nil, err
 	}
-	for _, image := range images.Images {
-		s.Cache.InsertImage(image.Identifier, image.Name)
+	for _, orgaImage := range OrgaImages.Images {
+		s.Cache.InsertImage(orgaImage.Identifier, "fr-1", orgaImage.Arch, orgaImage.Organization, orgaImage.Name, "")
+		images.Images = append(images.Images, MarketImage{
+			Categories:           []string{"MyImages"},
+			CreationDate:         orgaImage.CreationDate,
+			CurrentPublicVersion: orgaImage.Identifier,
+			ModificationDate:     orgaImage.ModificationDate,
+			Name:                 orgaImage.Name,
+			Public:               false,
+			MarketVersions: MarketVersions{
+				Versions: []MarketVersionDefinition{
+					{
+						CreationDate:     orgaImage.CreationDate,
+						ID:               orgaImage.Identifier,
+						ModificationDate: orgaImage.ModificationDate,
+						MarketLocalImages: MarketLocalImages{
+							LocalImages: []MarketLocalImageDefinition{
+								{
+									Arch: orgaImage.Arch,
+									ID:   orgaImage.Identifier,
+									Zone: "fr-1",
+								},
+							},
+						},
+					},
+				},
+			},
+		})
 	}
 	return &images.Images, nil
 }
 
 // GetImage gets an image from the ScalewayAPI
 func (s *ScalewayAPI) GetImage(imageID string) (*ScalewayImage, error) {
-	resp, err := s.GetResponse("images/" + imageID)
+	resp, err := s.GetResponse(ComputeAPI, "images/"+imageID)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1293,23 +1456,59 @@ func (s *ScalewayAPI) GetImage(imageID string) (*ScalewayImage, error) {
 	if err = json.Unmarshal(body, &oneImage); err != nil {
 		return nil, err
 	}
-	s.Cache.InsertImage(oneImage.Image.Identifier, oneImage.Image.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertImage(oneImage.Image.Identifier, "fr-1", oneImage.Image.Arch, oneImage.Image.Organization, oneImage.Image.Name, "")
 	return &oneImage.Image, nil
 }
 
 // DeleteImage deletes a image
 func (s *ScalewayAPI) DeleteImage(imageID string) error {
-	resp, err := s.DeleteResponse(fmt.Sprintf("images/%s", imageID))
+	defer s.Cache.RemoveImage(imageID)
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("images/%s", imageID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
-		s.Cache.RemoveImage(imageID)
 		return err
 	}
-	defer resp.Body.Close()
 
 	if _, err := s.handleHTTPError([]int{204}, resp); err != nil {
 		return err
 	}
-	s.Cache.RemoveImage(imageID)
+	return nil
+}
+
+// DeleteSnapshot deletes a snapshot
+func (s *ScalewayAPI) DeleteSnapshot(snapshotID string) error {
+	defer s.Cache.RemoveSnapshot(snapshotID)
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("snapshots/%s", snapshotID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.handleHTTPError([]int{204}, resp); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteVolume deletes a volume
+func (s *ScalewayAPI) DeleteVolume(volumeID string) error {
+	defer s.Cache.RemoveVolume(volumeID)
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("volumes/%s", volumeID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.handleHTTPError([]int{204}, resp); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1318,11 +1517,13 @@ func (s *ScalewayAPI) GetSnapshots() (*[]ScalewaySnapshot, error) {
 	query := url.Values{}
 	s.Cache.ClearSnapshots()
 
-	resp, err := s.GetResponse("snapshots?" + query.Encode())
+	resp, err := s.GetResponse(ComputeAPI, "snapshots?"+query.Encode())
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1334,18 +1535,21 @@ func (s *ScalewayAPI) GetSnapshots() (*[]ScalewaySnapshot, error) {
 		return nil, err
 	}
 	for _, snapshot := range snapshots.Snapshots {
-		s.Cache.InsertSnapshot(snapshot.Identifier, snapshot.Name)
+		// FIXME region, arch, owner, title
+		s.Cache.InsertSnapshot(snapshot.Identifier, "fr-1", "", snapshot.Organization, snapshot.Name)
 	}
 	return &snapshots.Snapshots, nil
 }
 
 // GetSnapshot gets a snapshot from the ScalewayAPI
 func (s *ScalewayAPI) GetSnapshot(snapshotID string) (*ScalewaySnapshot, error) {
-	resp, err := s.GetResponse("snapshots/" + snapshotID)
+	resp, err := s.GetResponse(ComputeAPI, "snapshots/"+snapshotID)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1356,7 +1560,8 @@ func (s *ScalewayAPI) GetSnapshot(snapshotID string) (*ScalewaySnapshot, error) 
 	if err = json.Unmarshal(body, &oneSnapshot); err != nil {
 		return nil, err
 	}
-	s.Cache.InsertSnapshot(oneSnapshot.Snapshot.Identifier, oneSnapshot.Snapshot.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertSnapshot(oneSnapshot.Snapshot.Identifier, "fr-1", "", oneSnapshot.Snapshot.Organization, oneSnapshot.Snapshot.Name)
 	return &oneSnapshot.Snapshot, nil
 }
 
@@ -1365,11 +1570,13 @@ func (s *ScalewayAPI) GetVolumes() (*[]ScalewayVolume, error) {
 	query := url.Values{}
 	s.Cache.ClearVolumes()
 
-	resp, err := s.GetResponse("volumes?" + query.Encode())
+	resp, err := s.GetResponse(ComputeAPI, "volumes?"+query.Encode())
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1381,18 +1588,21 @@ func (s *ScalewayAPI) GetVolumes() (*[]ScalewayVolume, error) {
 		return nil, err
 	}
 	for _, volume := range volumes.Volumes {
-		s.Cache.InsertVolume(volume.Identifier, volume.Name)
+		// FIXME region, arch, owner, title
+		s.Cache.InsertVolume(volume.Identifier, "fr-1", "", volume.Organization, volume.Name)
 	}
 	return &volumes.Volumes, nil
 }
 
 // GetVolume gets a volume from the ScalewayAPI
 func (s *ScalewayAPI) GetVolume(volumeID string) (*ScalewayVolume, error) {
-	resp, err := s.GetResponse("volumes/" + volumeID)
+	resp, err := s.GetResponse(ComputeAPI, "volumes/"+volumeID)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1403,7 +1613,8 @@ func (s *ScalewayAPI) GetVolume(volumeID string) (*ScalewayVolume, error) {
 	if err = json.Unmarshal(body, &oneVolume); err != nil {
 		return nil, err
 	}
-	s.Cache.InsertVolume(oneVolume.Volume.Identifier, oneVolume.Volume.Name)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertVolume(oneVolume.Volume.Identifier, "fr-1", "", oneVolume.Volume.Organization, oneVolume.Volume.Name)
 	return &oneVolume.Volume, nil
 }
 
@@ -1411,11 +1622,13 @@ func (s *ScalewayAPI) GetVolume(volumeID string) (*ScalewayVolume, error) {
 func (s *ScalewayAPI) GetBootscripts() (*[]ScalewayBootscript, error) {
 	query := url.Values{}
 	s.Cache.ClearBootscripts()
-	resp, err := s.GetResponse("bootscripts?" + query.Encode())
+	resp, err := s.GetResponse(ComputeAPI, "bootscripts?"+query.Encode())
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1427,18 +1640,21 @@ func (s *ScalewayAPI) GetBootscripts() (*[]ScalewayBootscript, error) {
 		return nil, err
 	}
 	for _, bootscript := range bootscripts.Bootscripts {
-		s.Cache.InsertBootscript(bootscript.Identifier, bootscript.Title)
+		// FIXME region, arch, owner, title
+		s.Cache.InsertBootscript(bootscript.Identifier, "fr-1", bootscript.Arch, bootscript.Organization, bootscript.Title)
 	}
 	return &bootscripts.Bootscripts, nil
 }
 
 // GetBootscript gets a bootscript from the ScalewayAPI
 func (s *ScalewayAPI) GetBootscript(bootscriptID string) (*ScalewayBootscript, error) {
-	resp, err := s.GetResponse("bootscripts/" + bootscriptID)
+	resp, err := s.GetResponse(ComputeAPI, "bootscripts/"+bootscriptID)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1449,24 +1665,30 @@ func (s *ScalewayAPI) GetBootscript(bootscriptID string) (*ScalewayBootscript, e
 	if err = json.Unmarshal(body, &oneBootscript); err != nil {
 		return nil, err
 	}
-	s.Cache.InsertBootscript(oneBootscript.Bootscript.Identifier, oneBootscript.Bootscript.Title)
+	// FIXME region, arch, owner, title
+	s.Cache.InsertBootscript(oneBootscript.Bootscript.Identifier, "fr-1", oneBootscript.Bootscript.Arch, oneBootscript.Bootscript.Organization, oneBootscript.Bootscript.Title)
 	return &oneBootscript.Bootscript, nil
 }
 
 // GetUserdatas gets list of userdata for a server
-func (s *ScalewayAPI) GetUserdatas(serverID string) (*ScalewayUserdatas, error) {
-	var url string
-	if s.isMetadata {
+func (s *ScalewayAPI) GetUserdatas(serverID string, metadata bool) (*ScalewayUserdatas, error) {
+	var url, endpoint string
+
+	endpoint = ComputeAPI
+	if metadata {
 		url = "/user_data"
+		endpoint = MetadataAPI
 	} else {
 		url = fmt.Sprintf("servers/%s/user_data", serverID)
 	}
 
-	resp, err := s.GetResponse(url)
+	resp, err := s.GetResponse(endpoint, url)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1485,22 +1707,26 @@ func (s *ScalewayUserdata) String() string {
 }
 
 // GetUserdata gets a specific userdata for a server
-func (s *ScalewayAPI) GetUserdata(serverID string, key string) (*ScalewayUserdata, error) {
+func (s *ScalewayAPI) GetUserdata(serverID, key string, metadata bool) (*ScalewayUserdata, error) {
 	var data ScalewayUserdata
 	var err error
-	var url string
+	var url, endpoint string
 
-	if s.isMetadata {
+	endpoint = ComputeAPI
+	if metadata {
 		url = fmt.Sprintf("/user_data/%s", key)
+		endpoint = MetadataAPI
 	} else {
 		url = fmt.Sprintf("servers/%s/user_data/%s", serverID, key)
 	}
 
-	resp, err := s.GetResponse(url)
+	resp, err := s.GetResponse(endpoint, url)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("no such user_data %q (%d)", key, resp.StatusCode)
@@ -1510,16 +1736,18 @@ func (s *ScalewayAPI) GetUserdata(serverID string, key string) (*ScalewayUserdat
 }
 
 // PatchUserdata sets a user data
-func (s *ScalewayAPI) PatchUserdata(serverID string, key string, value []byte) error {
-	var resource string
+func (s *ScalewayAPI) PatchUserdata(serverID, key string, value []byte, metadata bool) error {
+	var resource, endpoint string
 
-	if s.isMetadata {
+	endpoint = ComputeAPI
+	if metadata {
 		resource = fmt.Sprintf("/user_data/%s", key)
+		endpoint = MetadataAPI
 	} else {
 		resource = fmt.Sprintf("servers/%s/user_data/%s", serverID, key)
 	}
 
-	uri := fmt.Sprintf("%s/%s", strings.TrimRight(s.APIUrl, "/"), resource)
+	uri := fmt.Sprintf("%s/%s", strings.TrimRight(endpoint, "/"), resource)
 	payload := new(bytes.Buffer)
 	payload.Write(value)
 
@@ -1530,6 +1758,7 @@ func (s *ScalewayAPI) PatchUserdata(serverID string, key string, value []byte) e
 
 	req.Header.Set("X-Auth-Token", s.Token)
 	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("User-Agent", s.userAgent)
 
 	curl, err := http2curl.GetCurlCommand(req)
 	if os.Getenv("SCW_SENSITIVE") != "1" {
@@ -1539,10 +1768,12 @@ func (s *ScalewayAPI) PatchUserdata(serverID string, key string, value []byte) e
 	}
 
 	resp, err := s.client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode == 204 {
 		return nil
@@ -1552,36 +1783,39 @@ func (s *ScalewayAPI) PatchUserdata(serverID string, key string, value []byte) e
 }
 
 // DeleteUserdata deletes a server user_data
-func (s *ScalewayAPI) DeleteUserdata(serverID string, key string) error {
-	var url string
+func (s *ScalewayAPI) DeleteUserdata(serverID, key string, metadata bool) error {
+	var url, endpoint string
 
-	if s.isMetadata {
+	endpoint = ComputeAPI
+	if metadata {
 		url = fmt.Sprintf("/user_data/%s", key)
+		endpoint = MetadataAPI
 	} else {
 		url = fmt.Sprintf("servers/%s/user_data/%s", serverID, key)
 	}
 
-	resp, err := s.DeleteResponse(url)
+	resp, err := s.DeleteResponse(endpoint, url)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	// Succeed POST code
-	if resp.StatusCode == 204 {
-		return nil
-	}
-	return fmt.Errorf("cannot delete user_data (%d)", resp.StatusCode)
+	_, err = s.handleHTTPError([]int{204}, resp)
+	return err
 }
 
 // GetTasks get the list of tasks from the ScalewayAPI
 func (s *ScalewayAPI) GetTasks() (*[]ScalewayTask, error) {
 	query := url.Values{}
-	resp, err := s.GetResponse("tasks?" + query.Encode())
+	resp, err := s.GetResponse(ComputeAPI, "tasks?"+query.Encode())
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1597,16 +1831,16 @@ func (s *ScalewayAPI) GetTasks() (*[]ScalewayTask, error) {
 
 // CheckCredentials performs a dummy check to ensure we can contact the API
 func (s *ScalewayAPI) CheckCredentials() error {
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
 	query := url.Values{}
 	query.Set("token_id", s.Token)
 
-	resp, err := s.GetResponse("tokens?" + query.Encode())
+	resp, err := s.GetResponse(AccountAPI, "tokens?"+query.Encode())
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if _, err := s.handleHTTPError([]int{200}, resp); err != nil {
 		return err
@@ -1616,14 +1850,13 @@ func (s *ScalewayAPI) CheckCredentials() error {
 
 // GetUserID returns the userID
 func (s *ScalewayAPI) GetUserID() (string, error) {
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
-
-	resp, err := s.GetResponse(fmt.Sprintf("tokens/%s", s.Token))
+	resp, err := s.GetResponse(AccountAPI, fmt.Sprintf("tokens/%s", s.Token))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1639,14 +1872,13 @@ func (s *ScalewayAPI) GetUserID() (string, error) {
 
 // GetOrganization returns Organization
 func (s *ScalewayAPI) GetOrganization() (*ScalewayOrganizationsDefinition, error) {
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
-
-	resp, err := s.GetResponse("organizations")
+	resp, err := s.GetResponse(AccountAPI, "organizations")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1666,14 +1898,13 @@ func (s *ScalewayAPI) GetUser() (*ScalewayUserDefinition, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
-
-	resp, err := s.GetResponse(fmt.Sprintf("users/%s", userID))
+	resp, err := s.GetResponse(AccountAPI, fmt.Sprintf("users/%s", userID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1689,13 +1920,13 @@ func (s *ScalewayAPI) GetUser() (*ScalewayUserDefinition, error) {
 
 // GetPermissions returns the permissions
 func (s *ScalewayAPI) GetPermissions() (*ScalewayPermissionDefinition, error) {
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
-	resp, err := s.GetResponse(fmt.Sprintf("tokens/%s/permissions", s.Token))
+	resp, err := s.GetResponse(AccountAPI, fmt.Sprintf("tokens/%s/permissions", s.Token))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1711,11 +1942,13 @@ func (s *ScalewayAPI) GetPermissions() (*ScalewayPermissionDefinition, error) {
 
 // GetDashboard returns the dashboard
 func (s *ScalewayAPI) GetDashboard() (*ScalewayDashboard, error) {
-	resp, err := s.GetResponse("dashboard")
+	resp, err := s.GetResponse(ComputeAPI, "dashboard")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1729,92 +1962,120 @@ func (s *ScalewayAPI) GetDashboard() (*ScalewayDashboard, error) {
 	return &dashboard.Dashboard, nil
 }
 
-// GetServerID returns exactly one server matching or dies
-func (s *ScalewayAPI) GetServerID(needle string) string {
+// GetServerID returns exactly one server matching
+func (s *ScalewayAPI) GetServerID(needle string) (string, error) {
 	// Parses optional type prefix, i.e: "server:name" -> "name"
 	_, needle = parseNeedle(needle)
 
 	servers, err := s.ResolveServer(needle)
 	if err != nil {
-		log.Fatalf("Unable to resolve server %s: %s", needle, err)
+		return "", fmt.Errorf("Unable to resolve server %s: %s", needle, err)
 	}
 	if len(servers) == 1 {
-		return servers[0].Identifier
+		return servers[0].Identifier, nil
 	}
 	if len(servers) == 0 {
-		log.Fatalf("No such server: %s", needle)
+		return "", fmt.Errorf("No such server: %s", needle)
 	}
-
-	showResolverResults(needle, servers)
-	os.Exit(1)
-	return ""
+	return "", showResolverResults(needle, servers)
 }
 
 func showResolverResults(needle string, results ScalewayResolverResults) error {
-	log.Errorf("Too many candidates for %s (%d)", needle, len(results))
-
 	w := tabwriter.NewWriter(os.Stderr, 20, 1, 3, ' ', 0)
 	defer w.Flush()
 	sort.Sort(results)
 	for _, result := range results {
-		fmt.Fprintf(w, "- %s\t%s\t%s\n", result.TruncIdentifier(), result.CodeName(), result.Name)
+		if result.Arch == "" {
+			result.Arch = "n/a"
+		}
+		fmt.Fprintf(w, "- %s\t%s\t%s\t%s\n", result.TruncIdentifier(), result.CodeName(), result.Name, result.Arch)
 	}
-	return nil
+	return fmt.Errorf("Too many candidates for %s (%d)", needle, len(results))
 }
 
-// GetSnapshotID returns exactly one snapshot matching or dies
-func (s *ScalewayAPI) GetSnapshotID(needle string) string {
+// GetVolumeID returns exactly one volume matching
+func (s *ScalewayAPI) GetVolumeID(needle string) (string, error) {
+	// Parses optional type prefix, i.e: "volume:name" -> "name"
+	_, needle = parseNeedle(needle)
+
+	volumes, err := s.ResolveVolume(needle)
+	if err != nil {
+		return "", fmt.Errorf("Unable to resolve volume %s: %s", needle, err)
+	}
+	if len(volumes) == 1 {
+		return volumes[0].Identifier, nil
+	}
+	if len(volumes) == 0 {
+		return "", fmt.Errorf("No such volume: %s", needle)
+	}
+	return "", showResolverResults(needle, volumes)
+}
+
+// GetSnapshotID returns exactly one snapshot matching
+func (s *ScalewayAPI) GetSnapshotID(needle string) (string, error) {
 	// Parses optional type prefix, i.e: "snapshot:name" -> "name"
 	_, needle = parseNeedle(needle)
 
 	snapshots, err := s.ResolveSnapshot(needle)
 	if err != nil {
-		log.Fatalf("Unable to resolve snapshot %s: %s", needle, err)
+		return "", fmt.Errorf("Unable to resolve snapshot %s: %s", needle, err)
 	}
 	if len(snapshots) == 1 {
-		return snapshots[0].Identifier
+		return snapshots[0].Identifier, nil
 	}
 	if len(snapshots) == 0 {
-		log.Fatalf("No such snapshot: %s", needle)
+		return "", fmt.Errorf("No such snapshot: %s", needle)
 	}
-
-	showResolverResults(needle, snapshots)
-	os.Exit(1)
-	return ""
+	return "", showResolverResults(needle, snapshots)
 }
 
-// GetImageID returns exactly one image matching or dies
-func (s *ScalewayAPI) GetImageID(needle string, exitIfMissing bool) string {
+// FilterImagesByArch removes entry that doesn't match with architecture
+func FilterImagesByArch(res ScalewayResolverResults, arch string) (ret ScalewayResolverResults) {
+	if arch == "*" {
+		return res
+	}
+	for _, result := range res {
+		if result.Arch == arch {
+			ret = append(ret, result)
+		}
+	}
+	return
+}
+
+// GetImageID returns exactly one image matching
+func (s *ScalewayAPI) GetImageID(needle, arch string) (*ScalewayImageIdentifier, error) {
 	// Parses optional type prefix, i.e: "image:name" -> "name"
 	_, needle = parseNeedle(needle)
 
 	images, err := s.ResolveImage(needle)
 	if err != nil {
-		log.Fatalf("Unable to resolve image %s: %s", needle, err)
+		return nil, fmt.Errorf("Unable to resolve image %s: %s", needle, err)
 	}
+	images = FilterImagesByArch(images, arch)
 	if len(images) == 1 {
-		return images[0].Identifier
+		return &ScalewayImageIdentifier{
+			Identifier: images[0].Identifier,
+			Arch:       images[0].Arch,
+			// FIXME region, owner hardcoded
+			Region: "fr-1",
+			Owner:  "",
+		}, nil
 	}
 	if len(images) == 0 {
-		if exitIfMissing {
-			log.Fatalf("No such image: %s", needle)
-		} else {
-			return ""
-		}
+		return nil, fmt.Errorf("No such image: %s", needle)
 	}
-
-	showResolverResults(needle, images)
-	os.Exit(1)
-	return ""
+	return nil, showResolverResults(needle, images)
 }
 
 // GetSecurityGroups returns a ScalewaySecurityGroups
 func (s *ScalewayAPI) GetSecurityGroups() (*ScalewayGetSecurityGroups, error) {
-	resp, err := s.GetResponse("security_groups")
+	resp, err := s.GetResponse(ComputeAPI, "security_groups")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1830,11 +2091,13 @@ func (s *ScalewayAPI) GetSecurityGroups() (*ScalewayGetSecurityGroups, error) {
 
 // GetSecurityGroupRules returns a ScalewaySecurityGroupRules
 func (s *ScalewayAPI) GetSecurityGroupRules(groupID string) (*ScalewayGetSecurityGroupRules, error) {
-	resp, err := s.GetResponse(fmt.Sprintf("security_groups/%s/rules", groupID))
+	resp, err := s.GetResponse(ComputeAPI, fmt.Sprintf("security_groups/%s/rules", groupID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1850,11 +2113,13 @@ func (s *ScalewayAPI) GetSecurityGroupRules(groupID string) (*ScalewayGetSecurit
 
 // GetASecurityGroupRule returns a ScalewaySecurityGroupRule
 func (s *ScalewayAPI) GetASecurityGroupRule(groupID string, rulesID string) (*ScalewayGetSecurityGroupRule, error) {
-	resp, err := s.GetResponse(fmt.Sprintf("security_groups/%s/rules/%s", groupID, rulesID))
+	resp, err := s.GetResponse(ComputeAPI, fmt.Sprintf("security_groups/%s/rules/%s", groupID, rulesID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1870,11 +2135,13 @@ func (s *ScalewayAPI) GetASecurityGroupRule(groupID string, rulesID string) (*Sc
 
 // GetASecurityGroup returns a ScalewaySecurityGroup
 func (s *ScalewayAPI) GetASecurityGroup(groupsID string) (*ScalewayGetSecurityGroup, error) {
-	resp, err := s.GetResponse(fmt.Sprintf("security_groups/%s", groupsID))
+	resp, err := s.GetResponse(ComputeAPI, fmt.Sprintf("security_groups/%s", groupsID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1888,13 +2155,99 @@ func (s *ScalewayAPI) GetASecurityGroup(groupsID string) (*ScalewayGetSecurityGr
 	return &securityGroups, nil
 }
 
+// PostSecurityGroup posts a group on a server
+func (s *ScalewayAPI) PostSecurityGroup(group ScalewayNewSecurityGroup) error {
+	resp, err := s.PostResponse(ComputeAPI, "security_groups", group)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.handleHTTPError([]int{201}, resp)
+	return err
+}
+
+// PostSecurityGroupRule posts a rule on a server
+func (s *ScalewayAPI) PostSecurityGroupRule(SecurityGroupID string, rules ScalewayNewSecurityGroupRule) error {
+	resp, err := s.PostResponse(ComputeAPI, fmt.Sprintf("security_groups/%s/rules", SecurityGroupID), rules)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.handleHTTPError([]int{201}, resp)
+	return err
+}
+
+// DeleteSecurityGroup deletes a SecurityGroup
+func (s *ScalewayAPI) DeleteSecurityGroup(securityGroupID string) error {
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("security_groups/%s", securityGroupID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.handleHTTPError([]int{204}, resp)
+	return err
+}
+
+// PutSecurityGroup updates a SecurityGroup
+func (s *ScalewayAPI) PutSecurityGroup(group ScalewayNewSecurityGroup, securityGroupID string) error {
+	resp, err := s.PutResponse(ComputeAPI, fmt.Sprintf("security_groups/%s", securityGroupID), group)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
+}
+
+// PutSecurityGroupRule updates a SecurityGroupRule
+func (s *ScalewayAPI) PutSecurityGroupRule(rules ScalewayNewSecurityGroupRule, securityGroupID, RuleID string) error {
+	resp, err := s.PutResponse(ComputeAPI, fmt.Sprintf("security_groups/%s/rules/%s", securityGroupID, RuleID), rules)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
+}
+
+// DeleteSecurityGroupRule deletes a SecurityGroupRule
+func (s *ScalewayAPI) DeleteSecurityGroupRule(SecurityGroupID, RuleID string) error {
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("security_groups/%s/rules/%s", SecurityGroupID, RuleID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = s.handleHTTPError([]int{204}, resp)
+	return err
+}
+
 // GetContainers returns a ScalewayGetContainers
 func (s *ScalewayAPI) GetContainers() (*ScalewayGetContainers, error) {
-	resp, err := s.GetResponse("containers")
+	resp, err := s.GetResponse(ComputeAPI, "containers")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1910,11 +2263,13 @@ func (s *ScalewayAPI) GetContainers() (*ScalewayGetContainers, error) {
 
 // GetContainerDatas returns a ScalewayGetContainerDatas
 func (s *ScalewayAPI) GetContainerDatas(container string) (*ScalewayGetContainerDatas, error) {
-	resp, err := s.GetResponse(fmt.Sprintf("containers/%s", container))
+	resp, err := s.GetResponse(ComputeAPI, fmt.Sprintf("containers/%s", container))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1930,11 +2285,13 @@ func (s *ScalewayAPI) GetContainerDatas(container string) (*ScalewayGetContainer
 
 // GetIPS returns a ScalewayGetIPS
 func (s *ScalewayAPI) GetIPS() (*ScalewayGetIPS, error) {
-	resp, err := s.GetResponse("ips")
+	resp, err := s.GetResponse(ComputeAPI, "ips")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -1954,11 +2311,13 @@ func (s *ScalewayAPI) NewIP() (*ScalewayGetIP, error) {
 		Organization string `json:"organization"`
 	}
 	orga.Organization = s.Organization
-	resp, err := s.PostResponse("ips", orga)
+	resp, err := s.PostResponse(ComputeAPI, "ips", orga)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{201}, resp)
 	if err != nil {
@@ -1990,23 +2349,23 @@ func (s *ScalewayAPI) AttachIP(ipID, serverID string) error {
 	update.ID = ip.IP.ID
 	update.Organization = ip.IP.Organization
 	update.Server = serverID
-	resp, err := s.PutResponse(fmt.Sprintf("ips/%s", ipID), update)
+	resp, err := s.PutResponse(ComputeAPI, fmt.Sprintf("ips/%s", ipID), update)
 	if err != nil {
 		return err
 	}
-	if _, err := s.handleHTTPError([]int{200}, resp); err != nil {
-		return err
-	}
-	return nil
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
 }
 
 // DeleteIP deletes an IP
 func (s *ScalewayAPI) DeleteIP(ipID string) error {
-	resp, err := s.DeleteResponse(fmt.Sprintf("ips/%s", ipID))
+	resp, err := s.DeleteResponse(ComputeAPI, fmt.Sprintf("ips/%s", ipID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if _, err := s.handleHTTPError([]int{204}, resp); err != nil {
 		return err
@@ -2016,11 +2375,13 @@ func (s *ScalewayAPI) DeleteIP(ipID string) error {
 
 // GetIP returns a ScalewayGetIP
 func (s *ScalewayAPI) GetIP(ipID string) (*ScalewayGetIP, error) {
-	resp, err := s.GetResponse(fmt.Sprintf("ips/%s", ipID))
+	resp, err := s.GetResponse(ComputeAPI, fmt.Sprintf("ips/%s", ipID))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -2036,13 +2397,13 @@ func (s *ScalewayAPI) GetIP(ipID string) (*ScalewayGetIP, error) {
 
 // GetQuotas returns a ScalewayGetQuotas
 func (s *ScalewayAPI) GetQuotas() (*ScalewayGetQuotas, error) {
-	s.EnableAccountAPI()
-	defer s.DisableAccountAPI()
-	resp, err := s.GetResponse(fmt.Sprintf("organizations/%s/quotas", s.Organization))
+	resp, err := s.GetResponse(AccountAPI, fmt.Sprintf("organizations/%s/quotas", s.Organization))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	body, err := s.handleHTTPError([]int{200}, resp)
 	if err != nil {
@@ -2056,25 +2417,27 @@ func (s *ScalewayAPI) GetQuotas() (*ScalewayGetQuotas, error) {
 	return &quotas, nil
 }
 
-// GetBootscriptID returns exactly one bootscript matching or dies
-func (s *ScalewayAPI) GetBootscriptID(needle string) string {
+// GetBootscriptID returns exactly one bootscript matching
+func (s *ScalewayAPI) GetBootscriptID(needle, arch string) (string, error) {
 	// Parses optional type prefix, i.e: "bootscript:name" -> "name"
+	if anonuuid.IsUUID(needle) == nil {
+		return needle, nil
+	}
+
 	_, needle = parseNeedle(needle)
 
 	bootscripts, err := s.ResolveBootscript(needle)
 	if err != nil {
-		log.Fatalf("Unable to resolve bootscript %s: %s", needle, err)
+		return "", fmt.Errorf("Unable to resolve bootscript %s: %s", needle, err)
 	}
+	bootscripts.FilterByArch(arch)
 	if len(bootscripts) == 1 {
-		return bootscripts[0].Identifier
+		return bootscripts[0].Identifier, nil
 	}
 	if len(bootscripts) == 0 {
-		log.Fatalf("No such bootscript: %s", needle)
+		return "", fmt.Errorf("No such bootscript: %s", needle)
 	}
-
-	showResolverResults(needle, bootscripts)
-	os.Exit(1)
-	return ""
+	return "", showResolverResults(needle, bootscripts)
 }
 
 // HideAPICredentials removes API credentials from a string
@@ -2090,16 +2453,6 @@ func (s *ScalewayAPI) HideAPICredentials(input string) string {
 		output = strings.Replace(output, s.password, "XX-XX-XX-XX", -1)
 	}
 	return output
-}
-
-// EnableAccountAPI enable accountAPI
-func (s *ScalewayAPI) EnableAccountAPI() {
-	s.APIUrl = s.AccountAPI
-}
-
-// DisableAccountAPI disable accountAPI
-func (s *ScalewayAPI) DisableAccountAPI() {
-	s.APIUrl = s.ComputeAPI
 }
 
 func rootNetDial(network, addr string) (net.Conn, error) {
@@ -2133,27 +2486,241 @@ func rootNetDial(network, addr string) (net.Conn, error) {
 	return nil, fmt.Errorf("bind: permission denied, are you root ?")
 }
 
-// EnableMetadataAPI enable metadataAPI
-func (s *ScalewayAPI) EnableMetadataAPI() {
-	s.APIUrl = MetadataAPI
-	if os.Getenv("SCW_METADATA_URL") != "" {
-		s.APIUrl = os.Getenv("SCW_METADATA_URL")
-	}
-	s.oldTransport = &s.client.Transport
-	s.client.Transport = &http.Transport{
-		Dial: rootNetDial,
-	}
-	s.isMetadata = true
-}
-
-// DisableMetadataAPI disable metadataAPI
-func (s *ScalewayAPI) DisableMetadataAPI() {
-	s.APIUrl = s.ComputeAPI
-	s.client.Transport = *s.oldTransport
-	s.isMetadata = false
-}
-
 // SetPassword register the password
 func (s *ScalewayAPI) SetPassword(password string) {
 	s.password = password
+}
+
+// GetMarketPlaceImages returns images from marketplace
+func (s *ScalewayAPI) GetMarketPlaceImages(uuidImage string) (*MarketImages, error) {
+	resp, err := s.GetResponse(MarketplaceAPI, fmt.Sprintf("images/%s", uuidImage))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := s.handleHTTPError([]int{200}, resp)
+	if err != nil {
+		return nil, err
+	}
+	var ret MarketImages
+
+	if uuidImage != "" {
+		ret.Images = make([]MarketImage, 1)
+
+		var img MarketImage
+
+		if err = json.Unmarshal(body, &img); err != nil {
+			return nil, err
+		}
+		ret.Images[0] = img
+	} else {
+		if err = json.Unmarshal(body, &ret); err != nil {
+			return nil, err
+		}
+	}
+	return &ret, nil
+}
+
+// GetMarketPlaceImageVersions returns image version
+func (s *ScalewayAPI) GetMarketPlaceImageVersions(uuidImage, uuidVersion string) (*MarketVersions, error) {
+	resp, err := s.GetResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%s", uuidImage, uuidVersion))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := s.handleHTTPError([]int{200}, resp)
+	if err != nil {
+		return nil, err
+	}
+	var ret MarketVersions
+
+	if uuidImage != "" {
+		var version MarketVersion
+		ret.Versions = make([]MarketVersionDefinition, 1)
+
+		if err = json.Unmarshal(body, &version); err != nil {
+			return nil, err
+		}
+		ret.Versions[0] = version.Version
+	} else {
+		if err = json.Unmarshal(body, &ret); err != nil {
+			return nil, err
+		}
+	}
+	return &ret, nil
+}
+
+// GetMarketPlaceImageCurrentVersion return the image current version
+func (s *ScalewayAPI) GetMarketPlaceImageCurrentVersion(uuidImage string) (*MarketVersion, error) {
+	resp, err := s.GetResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/current", uuidImage))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := s.handleHTTPError([]int{200}, resp)
+	if err != nil {
+		return nil, err
+	}
+	var ret MarketVersion
+
+	if err = json.Unmarshal(body, &ret); err != nil {
+		return nil, err
+	}
+	return &ret, nil
+}
+
+// GetMarketPlaceLocalImages returns images from local region
+func (s *ScalewayAPI) GetMarketPlaceLocalImages(uuidImage, uuidVersion, uuidLocalImage string) (*MarketLocalImages, error) {
+	resp, err := s.GetResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%s/local_images/%s", uuidImage, uuidVersion, uuidLocalImage))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+	body, err := s.handleHTTPError([]int{200}, resp)
+	if err != nil {
+		return nil, err
+	}
+	var ret MarketLocalImages
+	if uuidLocalImage != "" {
+		var localImage MarketLocalImage
+		ret.LocalImages = make([]MarketLocalImageDefinition, 1)
+
+		if err = json.Unmarshal(body, &localImage); err != nil {
+			return nil, err
+		}
+		ret.LocalImages[0] = localImage.LocalImages
+	} else {
+		if err = json.Unmarshal(body, &ret); err != nil {
+			return nil, err
+		}
+	}
+	return &ret, nil
+}
+
+// PostMarketPlaceImage adds new image
+func (s *ScalewayAPI) PostMarketPlaceImage(images MarketImage) error {
+	resp, err := s.PostResponse(MarketplaceAPI, "images/", images)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{202}, resp)
+	return err
+}
+
+// PostMarketPlaceImageVersion adds new image version
+func (s *ScalewayAPI) PostMarketPlaceImageVersion(uuidImage string, version MarketVersion) error {
+	resp, err := s.PostResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions", uuidImage), version)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{202}, resp)
+	return err
+}
+
+// PostMarketPlaceLocalImage adds new local image
+func (s *ScalewayAPI) PostMarketPlaceLocalImage(uuidImage, uuidVersion, uuidLocalImage string, local MarketLocalImage) error {
+	resp, err := s.PostResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%s/local_images/%v", uuidImage, uuidVersion, uuidLocalImage), local)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{202}, resp)
+	return err
+}
+
+// PutMarketPlaceImage updates image
+func (s *ScalewayAPI) PutMarketPlaceImage(uudiImage string, images MarketImage) error {
+	resp, err := s.PutResponse(MarketplaceAPI, fmt.Sprintf("images/%v", uudiImage), images)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
+}
+
+// PutMarketPlaceImageVersion updates image version
+func (s *ScalewayAPI) PutMarketPlaceImageVersion(uuidImage, uuidVersion string, version MarketVersion) error {
+	resp, err := s.PutResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%v", uuidImage, uuidVersion), version)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
+}
+
+// PutMarketPlaceLocalImage updates local image
+func (s *ScalewayAPI) PutMarketPlaceLocalImage(uuidImage, uuidVersion, uuidLocalImage string, local MarketLocalImage) error {
+	resp, err := s.PostResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%s/local_images/%v", uuidImage, uuidVersion, uuidLocalImage), local)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{200}, resp)
+	return err
+}
+
+// DeleteMarketPlaceImage deletes image
+func (s *ScalewayAPI) DeleteMarketPlaceImage(uudImage string) error {
+	resp, err := s.DeleteResponse(MarketplaceAPI, fmt.Sprintf("images/%v", uudImage))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{204}, resp)
+	return err
+}
+
+// DeleteMarketPlaceImageVersion delete image version
+func (s *ScalewayAPI) DeleteMarketPlaceImageVersion(uuidImage, uuidVersion string) error {
+	resp, err := s.DeleteResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%v", uuidImage, uuidVersion))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{204}, resp)
+	return err
+}
+
+// DeleteMarketPlaceLocalImage deletes local image
+func (s *ScalewayAPI) DeleteMarketPlaceLocalImage(uuidImage, uuidVersion, uuidLocalImage string) error {
+	resp, err := s.DeleteResponse(MarketplaceAPI, fmt.Sprintf("images/%v/versions/%s/local_images/%v", uuidImage, uuidVersion, uuidLocalImage))
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.handleHTTPError([]int{204}, resp)
+	return err
 }
