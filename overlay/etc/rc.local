@@ -45,7 +45,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     sed -i 's/$KEY/'$APIKEY'/g' /etc/systemd/system/update-firewall.service
     sed -i 's/$TAG/discover:'${DISCOVER//\//\\/}'/g' /etc/systemd/system/update-firewall.service
     touch /etc/scw-int-done-setup
-    systemctl enable etcd && systemctl enable fleet && systemctl enable flanneld && systemctl enable update-firewall
+    systemctl enable etcd && systemctl enable fleet && systemctl enable update-firewall
     reboot
 fi
 
