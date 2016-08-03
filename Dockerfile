@@ -44,13 +44,12 @@ RUN apt-get -y install ufw && \
     sed -i "s/IPV6=yes/IPV6=no/g" /etc/default/ufw && \
     ufw default allow incoming
 
+COPY ./overlay/ /
+
 # Installing update-firewall
-ADD ./overlay/usr/local/ /usr/local/
 RUN cd /usr/local/update-firewall && \
     GOPATH=/usr/src/spouse GOBIN=$GOPATH/bin go get
 
-# Patch rootfs
-ADD ./overlay/etc/ /etc/
 RUN systemctl disable docker; systemctl enable docker
 
 # Clean rootfs from image-builder
