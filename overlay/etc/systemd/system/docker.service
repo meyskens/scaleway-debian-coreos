@@ -9,6 +9,7 @@ EnvironmentFile=-/etc/default/docker
 EnvironmentFile=-/etc/default/docker.d/*
 EnvironmentFile=-/etc/sysconfig/docker
 ExecStart=/usr/bin/docker daemon $DOCKER_OPTS
+Restart=always
 MountFlags=slave
 LimitNOFILE=1048576
 LimitNPROC=1048576
