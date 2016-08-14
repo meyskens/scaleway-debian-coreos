@@ -12,7 +12,7 @@
 # By default this script does nothing.
 
 if [ ! -f /etc/scw-int-done-setup ]; then
-    fallocate -l 8G /swap
+    fallocate -l 4G /swap
     mkswap /swap
     chmod 0600 /swap
     swapon /swap
