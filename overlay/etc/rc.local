@@ -48,6 +48,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
         sed -i 's/$armsupport/Environment=ETCD_UNSUPPORTED_ARCH=arm/g' /etc/systemd/system/etcd.service
         sed -i 's/IPV6=yes/IPV6=no/g' /etc/default/ufw 
     else
+        echo "aesni-intel" >/etc/modules
         sed -i 's/$armsupport//g' /etc/systemd/system/etcd.service
     fi
     sed -i 's/$PEERADDR/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
