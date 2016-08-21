@@ -70,4 +70,4 @@ To do this use the [official documentation on how to set up the DNS records](htt
 
 ---
 
-A project by [Innovate Technologies](https://github.com/Innovate-Technologies/)
+A project by [Satanist GNU users](https://github.com/Innovate-Technologies/)
