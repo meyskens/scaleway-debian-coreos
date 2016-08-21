@@ -41,7 +41,6 @@ RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.3 
 
 # Installing UFW
 RUN apt-get -y install ufw && \
-    sed -i "s/IPV6=yes/IPV6=no/g" /etc/default/ufw && \
     ufw default allow incoming
 
 COPY ./overlay/ /
