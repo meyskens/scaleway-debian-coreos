@@ -48,7 +48,6 @@ if [ ! -f /etc/scw-int-done-setup ]; then
         sed -i 's/$armsupport/Environment=ETCD_UNSUPPORTED_ARCH=arm/g' /etc/systemd/system/etcd.service
         sed -i 's/IPV6=yes/IPV6=no/g' /etc/default/ufw 
     else
-        echo "aesni-intel" >/etc/modprobe.d/aesni-intel.conf
         sed -i 's/$armsupport//g' /etc/systemd/system/etcd.service
     fi
     sed -i 's/$PEERADDR/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
@@ -62,5 +61,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     systemctl enable etcd && systemctl enable fleet && systemctl enable update-firewall
     reboot
 fi
+
+[ "$(lscpu | grep Architecture | awk '{print $2}')" == "x86_64" ] && modprobe aesni-intel
 
 exit 0
