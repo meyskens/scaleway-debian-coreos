@@ -18,9 +18,6 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     swapon /swap
     echo "/swap none swap defaults 0 0" >>/etc/fstab
 
-    ufw default allow incoming
-    ufw allow 22
-    ufw --force enable
     SCWIP=$(hostname  -I | awk '{print $1}')
     SCWPUBLIC=$(curl http://v4.myip.ninja)
     METADATA=`curl http://169.254.42.42/conf`
@@ -40,8 +37,23 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     if [[ $PROXY == "true" ]]
     then
         sed -i 's/$PROXY/on/g' /etc/systemd/system/etcd.service
+        sed -i 's/$PEERURL/http:\/\/127.0.0.1:2380/g' /etc/systemd/system/etcd.service
+        sed -i 's/$PEERADVURL/http:\/\/127.0.0.1:2380/g' /etc/systemd/system/etcd.service
+        sed -i 's/$CLIENTURL/http:\/\/127.0.0.1:2379/g' /etc/systemd/system/etcd.service
     else
         sed -i 's/$PROXY/off/g' /etc/systemd/system/etcd.service
+        sed -i 's/$PEERURL/http:\/\/0.0.0.0:2380/g' /etc/systemd/system/etcd.service
+        sed -i 's/$PEERADVURL/http:\/\/'$SCWPUBLIC':2380/g' /etc/systemd/system/etcd.service
+        sed -i 's/$ADVURL/http:\/\/'$SCWPUBLIC':2379/g' /etc/systemd/system/etcd.service
+        sed -i 's/$CLIENTURL/http:\/\/0.0.0.0:2379/g' /etc/systemd/system/etcd.service
+        
+        ufw default allow incoming
+        ufw allow 22
+        ufw --force enable
+        
+        cd /usr/local/update-firewall
+        GOPATH=/usr/src/spouse GOBIN=$GOPATH/bin go get
+        systemctl enable update-firewall
     fi
     if [[ $MODEL == "C1" ]]
     then
@@ -49,15 +61,13 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     else
         sed -i 's/$armsupport//g' /etc/systemd/system/etcd.service
     fi
-    sed -i 's/$PEERADDR/'$SCWIP':7001/g' /etc/systemd/system/etcd.service
-    sed -i 's/$LISTENPEER/http:\/\/'$SCWPUBLIC':7001/g' /etc/systemd/system/etcd.service
-    sed -i 's/$ADVURL/http:\/\/'$SCWPUBLIC':4001,http:\/\/'$SCWPUBLIC':2379/g' /etc/systemd/system/etcd.service
+    
     sed -i 's/$MODEL/'$MODEL'/g' /etc/systemd/system/fleet.service
     sed -i 's/$PUBLICIP/'$SCWPUBLIC'/g' /etc/systemd/system/fleet.service
     sed -i 's/$KEY/'$APIKEY'/g' /etc/systemd/system/update-firewall.service
     sed -i 's/$TAG/discover:'${DISCOVER//\//\\/}'/g' /etc/systemd/system/update-firewall.service
     touch /etc/scw-int-done-setup
-    systemctl enable etcd && systemctl enable fleet && systemctl enable update-firewall
+    systemctl enable etcd && systemctl enable fleet
     reboot
 fi
 

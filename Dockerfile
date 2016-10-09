@@ -45,10 +45,6 @@ RUN apt-get -y install ufw && \
 
 COPY ./overlay/ /
 
-# Installing update-firewall
-RUN cd /usr/local/update-firewall && \
-    GOPATH=/usr/src/spouse GOBIN=$GOPATH/bin go get
-
 RUN systemctl disable docker; systemctl enable docker
 
 # Clean rootfs from image-builder
