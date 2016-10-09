@@ -20,11 +20,10 @@ if [ ! -f /etc/scw-int-done-setup ]; then
 
     SCWIP=$(hostname  -I | awk '{print $1}')
     SCWPUBLIC=$(curl http://v4.myip.ninja)
-    METADATA=`curl http://169.254.42.42/conf`
-    MODEL=$(echo "$METADATA" | egrep COMMERCIAL_TYPE= | sed 's/COMMERCIAL_TYPE=//g')
-    DISCOVER=$(echo "$METADATA" | egrep TAGS_0= | sed 's/TAGS_0=discover://g')
-    APIKEY=$(echo "$METADATA"  | egrep TAGS_1= | sed 's/TAGS_1=api://g')
-    PROXY=$(echo "$METADATA"  | egrep TAGS_2= | sed 's/TAGS_2=proxy://g')
+    MODEL=$(oc-metadata --cached COMMERCIAL_TYPE)
+    DISCOVER=$(oc-metadata --cached TAGS_0)
+    APIKEY=$(oc-metadata --cached TAGS_1)
+    PROXY=$(oc-metadata --cached TAGS_2)
     echo "private_ipv4="$SCWIP >>/etc/environment
     echo "public_ipv4="$SCWPUBLIC >>/etc/environment
     sed -i 's/$HOST/'$SCWPUBLIC'/g' /etc/systemd/system/etcd.service
