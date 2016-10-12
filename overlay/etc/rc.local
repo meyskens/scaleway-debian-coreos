@@ -24,6 +24,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     DISCOVER=$(oc-metadata --cached TAGS_0)
     APIKEY=$(oc-metadata --cached TAGS_1)
     PROXY=$(oc-metadata --cached TAGS_2)
+    ZONE=$(oc-metadata --cached LOCATION_ZONE_ID)
     echo "private_ipv4="$SCWIP >>/etc/environment
     echo "public_ipv4="$SCWPUBLIC >>/etc/environment
     sed -i 's/$HOST/'$SCWPUBLIC'/g' /etc/systemd/system/etcd.service
@@ -62,6 +63,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     fi
     
     sed -i 's/$MODEL/'$MODEL'/g' /etc/systemd/system/fleet.service
+    sed -i 's/$ZONE/'$ZONE'/g' /etc/systemd/system/fleet.service
     sed -i 's/$PUBLICIP/'$SCWPUBLIC'/g' /etc/systemd/system/fleet.service
     sed -i 's/$KEY/'$APIKEY'/g' /etc/systemd/system/update-firewall.service
     sed -i 's/$TAG/discover:'${DISCOVER//\//\\/}'/g' /etc/systemd/system/update-firewall.service

@@ -4,7 +4,7 @@ After=etcd.service
 Wants=fleet.socket
 After=fleet.socket
 [Service]
-Environment="FLEET_METADATA=model=$MODEL"
+Environment="FLEET_METADATA=model=$MODEL,zone=$ZONE"
 Environment="FLEET_PUBLIC_IP=$PUBLICIP"
 ExecStart = /usr/bin/fleetd
 Restart=always
