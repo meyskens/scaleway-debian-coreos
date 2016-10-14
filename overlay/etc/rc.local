@@ -21,9 +21,9 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     SCWIP=$(hostname  -I | awk '{print $1}')
     SCWPUBLIC=$(curl http://v4.myip.ninja)
     MODEL=$(oc-metadata --cached COMMERCIAL_TYPE)
-    DISCOVER=$(oc-metadata --cached TAGS_0)
-    APIKEY=$(oc-metadata --cached TAGS_1)
-    PROXY=$(oc-metadata --cached TAGS_2)
+    DISCOVER=$(oc-metadata --cached TAGS_0 | sed 's/discover://g')
+    APIKEY=$(oc-metadata --cached TAGS_1 | sed 's/api://g')
+    PROXY=$(oc-metadata --cached TAGS_2 | sed 's/proxy://g')
     ZONE=$(oc-metadata --cached LOCATION_ZONE_ID)
     echo "private_ipv4="$SCWIP >>/etc/environment
     echo "public_ipv4="$SCWPUBLIC >>/etc/environment
