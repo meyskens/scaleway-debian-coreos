@@ -39,6 +39,7 @@ if [ ! -f /etc/scw-int-done-setup ]; then
         sed -i 's/$PROXY/on/g' /etc/systemd/system/etcd.service
         sed -i 's/$PEERURL/http:\/\/127.0.0.1:2380/g' /etc/systemd/system/etcd.service
         sed -i 's/$PEERADVURL/http:\/\/127.0.0.1:2380/g' /etc/systemd/system/etcd.service
+        sed -i 's/$ADVURL/http:\/\/127.0.0.1:2379/g' /etc/systemd/system/etcd.service
         sed -i 's/$CLIENTURL/http:\/\/127.0.0.1:2379/g' /etc/systemd/system/etcd.service
     else
         sed -i 's/$PROXY/off/g' /etc/systemd/system/etcd.service
