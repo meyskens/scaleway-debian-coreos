@@ -28,7 +28,7 @@ RUN apt-get -y -t jessie-backports install golang-go  && \
 # Install Fleet
 RUN cd /usr/src/ && \
     GOPATH=/usr/src/spouse go get golang.org/x/tools/cmd/cover && \
-    wget https://github.com/coreos/fleet/archive/v0.11.7.tar.gz && tar xzf v0.11.7.tar.gz && mv fleet-0.11.7 fleet && cd fleet && \
+    git clone https://github.com/coreos/fleet.git -b v0.13.0 && \
     ./build && \
     ln -s /usr/src/fleet/bin/* /usr/bin/
 
@@ -41,7 +41,7 @@ RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.3 
 
 # Install Flannel
 RUN cd /usr/src/ && git clone https://github.com/coreos/flannel.git && \
-    cd /usr/src/flannel && git checkout -b v0.6.2 && \
+    cd /usr/src/flannel && git checkout v0.6.2 && \
     make dist/flanneld && \
     ln -s /usr/src/flannel/bin/* /usr/bin/ && \
 
