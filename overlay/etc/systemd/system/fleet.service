@@ -1,8 +1,8 @@
 [Unit]
 Description=fleetd
-After=etcd.service
-Wants=fleet.socket
-After=fleet.socket
+After=etcd.service fleet.socket docker.service
+Wants=fleet.socket docker.service
+
 [Service]
 Environment="FLEET_METADATA=model=$MODEL,zone=$ZONE"
 Environment="FLEET_PUBLIC_IP=$PUBLICIP"
