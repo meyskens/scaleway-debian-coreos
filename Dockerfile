@@ -42,7 +42,7 @@ RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.3 
 # Install Flannel
 RUN cd /usr/src/ && git clone https://github.com/coreos/flannel.git && \
     cd /usr/src/flannel && git checkout v0.6.2 && \
-    make dist/flanneld && \
+    GOPATH=/usr/src/spouse make dist/flanneld && \
     ln -s /usr/src/flannel/bin/* /usr/bin/ && \
 
 # Installing UFW
