@@ -28,7 +28,7 @@ RUN apt-get -y -t jessie-backports install golang-go  && \
 # Install Fleet
 RUN cd /usr/src/ && \
     GOPATH=/usr/src/spouse go get golang.org/x/tools/cmd/cover && \
-    git clone https://github.com/coreos/fleet.git  && cd fleet && git checkout v0.13.0 &&\
+    wget https://github.com/coreos/fleet/archive/v0.11.7.tar.gz && tar xzf v0.11.7.tar.gz && mv fleet-0.11.7 fleet && cd fleet && \
     ./build && \
     ln -s /usr/src/fleet/bin/* /usr/bin/
 
