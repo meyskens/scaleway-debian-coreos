@@ -39,6 +39,12 @@ RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.3 
     ln -s /usr/src/etcd/bin/* /usr/bin/ && \
     mkdir /var/lib/etcd
 
+# Install Flannel
+RUN cd /usr/src/ && git clone https://github.com/coreos/flannel.git -b v0.6.2 && \
+    cd /usr/src/flannel && \
+    make dist/flanneld && \
+    ln -s /usr/src/flannel/bin/* /usr/bin/ && \
+
 # Installing UFW
 RUN apt-get -y install ufw && \
     ufw default allow incoming

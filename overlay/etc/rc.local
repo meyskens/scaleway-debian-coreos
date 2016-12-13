@@ -69,10 +69,10 @@ if [ ! -f /etc/scw-int-done-setup ]; then
     sed -i 's/$KEY/'$APIKEY'/g' /etc/systemd/system/update-firewall.service
     sed -i 's/$TAG/discover:'${DISCOVER//\//\\/}'/g' /etc/systemd/system/update-firewall.service
     touch /etc/scw-int-done-setup
-    systemctl enable etcd && systemctl enable fleet
+    systemctl enable etcd && systemctl enable flannel && systemctl enable fleet
     reboot
 fi
 
-[ "$(lscpu | grep Architecture | awk '{print $2}')" == "x86_64" ] && modprobe aesni-intel
+[ "$(lscpu | grep Architecture | awk '{print $2}')" == "x86_64" ] && modprobe aesni-intel || true 
 
 exit 0
