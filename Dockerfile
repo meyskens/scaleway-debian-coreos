@@ -46,7 +46,7 @@ RUN export GOPATH=/usr/src/spouse && \
     cd /usr/src/spouse/src/github.com/coreos/flannel && git checkout v0.6.2 && \
     go get && \
     make dist/flanneld && \
-    ln -s /usr/src/spouse/src/github.com/coreos/flannel/dist/flanneld /usr/bin/flanneld && \
+    ln -s /usr/src/spouse/src/github.com/coreos/flannel/dist/flanneld /usr/bin/flanneld
 
 # Installing UFW
 RUN apt-get -y install ufw && \
