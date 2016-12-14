@@ -5,8 +5,8 @@ Requires=etcd.service
 
 [Service]
 Type=simple
-ExecPreStart-=/bin/bash -c "etcdctl set /coreos.com/network/config '{"Network":"172.17.0.0/16"}'"
-ExecStart=/usr/bin/flanneld -etcd-endpoint=http://127.0.0.1:2379 -ip-masq=true -iface=eth0
+ExecStartPre-=/bin/bash -c "etcdctl set /coreos.com/network/config '{"Network":"172.17.0.0/16"}'"
+ExecStart=/usr/bin/flanneld --etcd-endpoints=http://127.0.0.1:2379 -ip-masq=true -iface=eth0
 Restart=on-failure
 
 [Install]
