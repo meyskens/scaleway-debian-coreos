@@ -41,7 +41,7 @@ RUN cd /usr/src/ && git clone https://github.com/coreos/etcd.git -b release-2.3 
 
 # Install Flannel
 RUN export GOPATH=/usr/src/spouse && \
-    mkdir -p /usr/src/spouse/src/github.com/coreos/
+    mkdir -p /usr/src/spouse/src/github.com/coreos/ && \
     cd /usr/src/ && git clone https://github.com/coreos/flannel.git /usr/src/spouse/src/github.com/coreos/flannel && \
     cd /usr/src/spouse/src/github.com/coreos/flannel && git checkout v0.6.2 && \
     go get && \
